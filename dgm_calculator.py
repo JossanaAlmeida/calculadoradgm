@@ -1,4 +1,7 @@
 import streamlit as st
+import pandas as pd
+from datetime import datetime
+import io # Para lidar com dados binários em memória
 
 # Define as opções para o alvo/filtro
 alvo_filtro_options = {
@@ -9,7 +12,7 @@ alvo_filtro_options = {
     'W/Rh': 1.042
 }
 
-# Fórmulas para CSR
+# --- Funções de Cálculo (Mantidas do seu código original) ---
 def calcular_csr(kv, alvo_filtro):
     try:
         kv = float(kv)
@@ -23,7 +26,6 @@ def calcular_csr(kv, alvo_filtro):
     except ValueError:
         return "Entrada inválida para Kv"
 
-# Função para calcular o fator g
 def calcular_fator_g(csr, espessura):
     try:
         csr = float(csr)
@@ -36,8 +38,6 @@ def calcular_fator_g(csr, espessura):
         }
 
         espessuras_cm = [2, 3, 4, 4.5, 5, 6, 7, 8, 9, 10, 11]
-        
-        # Encontra o CSR mais próximo, similar à sua lógica original
         csr_proximo = min(g_values, key=lambda x: abs(x - csr))
 
         try:
@@ -48,7 +48,6 @@ def calcular_fator_g(csr, espessura):
     except ValueError:
         return "Entrada inválida"
 
-# Função para calcular a glandularidade
 def calcular_glandularidade(idade, espessura_mama):
     espessuras_cm = [2, 3, 4, 4.5, 5, 6, 7, 8, 9, 10, 11]
     if 40 <= idade <= 49:
@@ -64,7 +63,6 @@ def calcular_glandularidade(idade, espessura_mama):
     except ValueError:
         return "Espessura da mama inválida."
 
-# Função para calcular o fator C
 def calcular_fator_c(csr, espessura, glandularidade):
     try:
         espessura = float(espessura)
@@ -95,10 +93,9 @@ def calcular_fator_c(csr, espessura, glandularidade):
             0.46: {1: lambda e: 0.0007 * e**3 - 0.0162 * e**2 + 0.1292 * e + 0.8523, 2: lambda e: 0.00008 * e**3 - 0.0024 * e**2 + 0.0241 * e + 0.9865, 3: lambda e: -0.0001 * e**3 + 0.0029 * e**2 - 0.0241 * e + 1.0127, 4: lambda e: -0.0004 * e**3 + 0.0087 * e**2 - 0.0706 * e + 1.0377},
             0.47: {1: lambda e: 0.0006 * e**3 - 0.015 * e**2 + 0.1216 * e + 0.8666, 2: lambda e: 0.00008 * e**3 - 0.0024 * e**2 + 0.0238 * e + 0.9869, 3: lambda e: -0.0001 * e**3 + 0.0029 * e**2 - 0.0242 * e + 1.0132, 4: lambda e: -0.0004 * e**3 + 0.0086 * e**2 - 0.07 * e + 1.0375},
             0.48: {1: lambda e: 0.0008 * e**3 - 0.0177 * e**2 + 0.1349 * e + 0.853, 2: lambda e: 0.0008 * e**3 - 0.0177 * e**2 + 0.1349 * e + 0.853, 3: lambda e: 0.0004 * e**3 - 0.0105 * e**2 + 0.093 * e + 1.077, 4: lambda e: -0.0004 * e**3 + 0.0093 * e**2 - 0.0726 * e + 1.03},
-            0.50: {1: lambda e: (0.0004 * e**3) - (0.0105 * e**2) + (0.093 * e) + 1.077, 2: lambda e: 0.0008 * e**3 - 0.0177 * e**2 + 0.1349 * e + 0.853, 3: lambda e: 0.0004 * e**3 - 0.0105 * e**2 + 0.093 * e + 1.077, 4: lambda e: -0.0004 * e**3 + 0.0093 * e**2 - 0.0726 * e + 1.03},
+            0.50: {1: lambda e: (0.0004 * e**3) - (0.0105 * e**2) + (0.093 * e) + 1.077, 2: lambda e: 0.0008 * e**3 - 0.0177 * e**2 + 0.1349 * e**2 + 0.853, 3: lambda e: 0.0004 * e**3 - 0.0105 * e**2 + 0.093 * e + 1.077, 4: lambda e: -0.0004 * e**3 + 0.0093 * e**2 - 0.0726 * e + 1.03},
         }
         
-        # Encontra o CSR mais próximo nas chaves das fórmulas
         csr_aproximado = min(formulas.keys(), key=lambda x: abs(x - csr))
 
         if csr_aproximado not in formulas:
@@ -110,7 +107,6 @@ def calcular_fator_c(csr, espessura, glandularidade):
     except (ValueError, TypeError):
         return "Entrada inválida"
 
-# Função para calcular o Ki
 def calcular_ki(kv, alvo_filtro, mas, espessura_mama):
     tabela_ki = {
         ('Mo/Mo', 26): 0.1357,
@@ -136,6 +132,16 @@ def calcular_dgm(ki, s, fator_g, fator_c):
     except (ValueError, TypeError):
         return "Entrada inválida para o cálculo do DGM"
 
+# --- Funções para Excel Download ---
+@st.cache_data # Cache a função para melhor desempenho
+def to_excel(df):
+    output = io.BytesIO()
+    writer = pd.ExcelWriter(output, engine='xlsxwriter') # ou 'openpyxl'
+    df.to_excel(writer, index=False, sheet_name='Resultados DGM')
+    writer.close() # Use writer.close() ao invés de writer.save() para versões mais recentes do pandas/xlsxwriter
+    processed_data = output.getvalue()
+    return processed_data
+
 # --- Interface Streamlit ---
 st.set_page_config(
     page_title="Calculadora de DGM",
@@ -146,7 +152,14 @@ st.set_page_config(
 st.title("🔬 Calculadora de Dose Glandular Média (DGM)")
 st.markdown("Preencha os campos abaixo para calcular a DGM de mamografia.")
 
-# Sidebar para inputs (opcional, pode ser no corpo principal também)
+# Inicializar st.session_state para armazenar os resultados
+if 'resultados_dgm' not in st.session_state:
+    st.session_state.resultados_dgm = pd.DataFrame(columns=[
+        "Data/Hora", "Idade", "Espessura (cm)", "Alvo/Filtro", "Kv", "mAs",
+        "Glandularidade (%)", "Valor s", "CSR", "Fator g", "Fator C", "Ki", "DGM (mGy)"
+    ])
+
+# Sidebar para inputs
 with st.sidebar:
     st.header("Dados de Entrada")
     idade = st.number_input('Idade:', min_value=1, max_value=120, value=45, help="Idade da paciente (usado para glandularidade automática)")
@@ -163,7 +176,7 @@ with st.sidebar:
 # Botão de Cálculo
 st.markdown("---")
 if st.button("Calcular DGM"):
-    st.subheader("Resultados:")
+    st.subheader("Resultados do Cálculo Atual:")
 
     # Cálculo da Glandularidade
     glandularidade = None
@@ -178,49 +191,53 @@ if st.button("Calcular DGM"):
             glandularidade = glandularidade_calc
             st.info(f"Glandularidade estimada (com base na idade e espessura): {glandularidade:.1f}%")
 
-
     # Cálculo de s
     s = alvo_filtro_options.get(alvo_filtro, "Inválido")
     if isinstance(s, str):
         st.error(f"Erro no valor de s: {s}")
+        s_val = "Erro"
     else:
         st.write(f"**Valor de s:** {s}")
+        s_val = s
 
     # Cálculo de CSR
     csr = calcular_csr(kv, alvo_filtro)
     if isinstance(csr, str):
         st.error(f"Erro no cálculo de CSR: {csr}")
+        csr_val = "Erro"
     else:
         st.write(f"**Valor de CSR:** {csr}")
+        csr_val = csr
 
     # Cálculo do Fator g
     fator_g = calcular_fator_g(csr, espessura_mama)
     if isinstance(fator_g, str):
         st.error(f"Erro no cálculo do Fator g: {fator_g}")
+        fator_g_val = "Erro"
     else:
         st.write(f"**Valor do Fator g:** {fator_g}")
+        fator_g_val = fator_g
 
     # Cálculo do Fator C
     fator_c = "Não calculado"
+    fator_c_val = "Erro"
     if isinstance(csr, (int, float)) and isinstance(glandularidade, (int, float)):
-        csr_possiveis = [0.34,0.35,0.36, 0.37, 0.38, 0.39, 0.40, 0.41, 0.42, 0.43, 0.44, 0.45, 0.46, 0.47, 0.48, 0.49, 0.50]
-        # Garante que o CSR mais próximo seja um dos que têm fórmulas definidas
-        if csr in csr_possiveis: # Se o CSR exato estiver nas chaves, use ele
-             csr_para_c = csr
-        else: # Caso contrário, aproxime para o mais próximo
-            csr_para_c = min(csr_possiveis, key=lambda x: abs(x - csr))
+        csr_possiveis = [0.34,0.35,0.36, 0.37, 0.38, 0.39, 0.40, 0.41, 0.42, 0.43, 0.44, 0.45, 0.46, 0.47, 0.48, 0.50]
+        csr_para_c = min(csr_possiveis, key=lambda x: abs(x - csr))
 
-        if csr_para_c not in [0.34,0.35,0.36, 0.37, 0.38, 0.39, 0.40, 0.41, 0.42, 0.43, 0.44, 0.45, 0.46, 0.47, 0.48, 0.50]: # Adicionei 0.49 que estava faltando na sua lista de chaves
-            st.warning(f"Atenção: Não há fórmula para CSR {csr_para_c} no cálculo do Fator C. Usando o mais próximo disponível.")
-            # Você pode ajustar esta parte se tiver uma lógica de fallback específica.
-            # Por enquanto, vou manter o que está no código original, aproximando para o mais próximo da lista de chaves.
-            
-        fator_c = calcular_fator_c(csr_para_c, espessura_mama, glandularidade)
+        # Adicione uma verificação para 0.49 que está faltando no seu dicionário 'formulas'
+        if csr_para_c == 0.49:
+            st.warning(f"Atenção: Não há fórmula para CSR {csr_para_c} no cálculo do Fator C. Usando o mais próximo disponível (0.50).")
+            csr_para_c = 0.50 # Força o uso de 0.50 como fallback
 
-        if isinstance(fator_c, str):
-            st.error(f"Erro no cálculo do Fator C: {fator_c}")
+        fator_c_calc = calcular_fator_c(csr_para_c, espessura_mama, glandularidade)
+
+        if isinstance(fator_c_calc, str):
+            st.error(f"Erro no cálculo do Fator C: {fator_c_calc}")
         else:
+            fator_c = fator_c_calc
             st.write(f"**Valor do Fator C (CSR ≈ {csr_para_c}, Espessura: {espessura_mama} cm, Glandularidade: {glandularidade:.1f}%):** {fator_c}")
+            fator_c_val = fator_c
     else:
         st.warning("Fator C não calculado devido a entradas inválidas de CSR ou Glandularidade.")
 
@@ -228,15 +245,63 @@ if st.button("Calcular DGM"):
     ki = calcular_ki(kv, alvo_filtro, mas, espessura_mama)
     if isinstance(ki, str):
         st.error(f"Erro no cálculo de Ki: {ki}")
+        ki_val = "Erro"
     else:
         st.write(f"**Valor de Ki:** {ki}")
+        ki_val = ki
 
     # Cálculo final da DGM
-    if all(isinstance(val, (int, float)) for val in [ki, s, fator_g, fator_c]):
-        dgm = calcular_dgm(ki, s, fator_g, fator_c)
+    dgm_val = "Erro"
+    if all(isinstance(val, (int, float)) for val in [ki_val, s_val, fator_g_val, fator_c_val]):
+        dgm = calcular_dgm(ki_val, s_val, fator_g_val, fator_c_val)
         st.success(f"**Valor da DGM:** {dgm} mGy")
+        dgm_val = dgm
     else:
         st.error("Não foi possível calcular a DGM devido a erros nos valores anteriores.")
+
+    # Armazenar resultados na sessão
+    if dgm_val != "Erro": # Apenas armazena se o DGM foi calculado com sucesso
+        nova_linha = {
+            "Data/Hora": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "Idade": idade,
+            "Espessura (cm)": espessura_mama,
+            "Alvo/Filtro": alvo_filtro,
+            "Kv": kv,
+            "mAs": mas,
+            "Glandularidade (%)": glandularidade,
+            "Valor s": s_val,
+            "CSR": csr_val,
+            "Fator g": fator_g_val,
+            "Fator C": fator_c_val,
+            "Ki": ki_val,
+            "DGM (mGy)": dgm_val
+        }
+        st.session_state.resultados_dgm = pd.concat([st.session_state.resultados_dgm, pd.DataFrame([nova_linha])], ignore_index=True)
+
+st.markdown("---")
+st.subheader("Histórico de Cálculos:")
+
+if not st.session_state.resultados_dgm.empty:
+    st.dataframe(st.session_state.resultados_dgm, use_container_width=True) # Exibe o DataFrame
+    
+    # Botão para exportar para Excel
+    excel_data = to_excel(st.session_state.resultados_dgm)
+    st.download_button(
+        label="📥 Baixar Resultados como Excel",
+        data=excel_data,
+        file_name=f"resultados_dgm_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    
+    # Botão para limpar histórico (opcional)
+    if st.button("Limpar Histórico"):
+        st.session_state.resultados_dgm = pd.DataFrame(columns=[
+            "Data/Hora", "Idade", "Espessura (cm)", "Alvo/Filtro", "Kv", "mAs",
+            "Glandularidade (%)", "Valor s", "CSR", "Fator g", "Fator C", "Ki", "DGM (mGy)"
+        ])
+        st.experimental_rerun() # Reinicia o app para refletir a limpeza
+else:
+    st.info("Nenhum cálculo realizado ainda. Os resultados aparecerão aqui.")
 
 st.markdown("---")
 st.markdown("Desenvolvido por você, com o auxílio de um modelo de linguagem.")
