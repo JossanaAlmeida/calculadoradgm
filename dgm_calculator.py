@@ -168,13 +168,13 @@ def calcular_dgm(ki, s, fator_g, fator_c):
 @st.cache_data # Cache a função para melhor desempenho
 def to_excel(df):
     output = io.BytesIO()
-    # MUDANÇA AQUI: de 'xlsxwriter' para 'openpyxl'
-    writer = pd.ExcelWriter(output, engine='openpyxl')
+    # MUDANÇA AQUI: de 'openpyxl' para 'xlsxwriter'
+    writer = pd.ExcelWriter(output, engine='xlsxwriter')
     df.to_excel(writer, index=False, sheet_name='Resultados DGM')
     writer.close()
     processed_data = output.getvalue()
     return processed_data
-
+    
 # --- Interface Streamlit ---
 st.set_page_config(
     page_title="Calculadora de DGM",
