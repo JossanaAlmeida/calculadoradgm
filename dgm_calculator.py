@@ -78,7 +78,7 @@ def calcular_csr(kv, alvo_filtro):
     except ValueError:
         return "Entrada inválida para Kv"
 
-# FUNÇÃO calcular_fator_g (mantida como a última versão)
+# FUNÇÃO calcular_fator_g
 def calcular_fator_g(csr, espessura):
     """
     Calcula o fator g usando a equação polinomial G = a0 + a1*x + a2*x^2 + a3*x^3,
@@ -114,7 +114,7 @@ def calcular_fator_g(csr, espessura):
     except ValueError:
         return "Entrada inválida para cálculo do fator g"
 
-# FUNÇÃO DE GLANDULARIDADE (mantida)
+# FUNÇÃO DE GLANDULARIDADE
 def calcular_glandularidade(idade, espessura_mama_cm):
     """
     Calcula a glandularidade usando a fórmula G = at^3 + bt^2 + ct + k.
@@ -151,7 +151,7 @@ def calcular_glandularidade(idade, espessura_mama_cm):
     
     return max(0, round(G, 2))
 
-# Função para calcular o fator C (mantida)
+# Função para calcular o fator C
 def calcular_fator_c(csr, espessura, glandularidade):
     try:
         espessura = float(espessura)
@@ -167,7 +167,6 @@ def calcular_fator_c(csr, espessura, glandularidade):
         else:
             grupo_val = 4
 
-        # Usa o dicionário global: formulas_fator_c
         csr_aproximado = min(formulas_fator_c.keys(), key=lambda x: abs(x - csr))
 
         if csr_aproximado not in formulas_fator_c:
@@ -179,9 +178,8 @@ def calcular_fator_c(csr, espessura, glandularidade):
     except (ValueError, TypeError):
         return "Entrada inválida"
 
-# Função para calcular o Ki (mantida)
+# Função para calcular o Ki
 def calcular_ki(kv, alvo_filtro, mas, espessura_mama):
-    # Usa o dicionário global: tabela_ki_global
     x = tabela_ki_global.get((alvo_filtro, int(kv)), 0)
     
     if x == 0:
@@ -193,7 +191,6 @@ def calcular_ki(kv, alvo_filtro, mas, espessura_mama):
 
     return round(((x * mas)*2500) / divisor, 2)
 
-# Função para calcular o DGM (mantida)
 def calcular_dgm(ki, s, fator_g, fator_c):
     try:
         dgm = ki * s * fator_g * fator_c
@@ -201,15 +198,11 @@ def calcular_dgm(ki, s, fator_g, fator_c):
     except (ValueError, TypeError):
         return "Entrada inválida para o cálculo do DGM"
 
-# Funções para Excel Download (mantida)
+# --- Funções para Exportação (AGORA PARA CSV) ---
 @st.cache_data
-def to_excel(df):
-    output = io.BytesIO()
-    writer = pd.ExcelWriter(output, engine='xlsxwriter')
-    df.to_excel(writer, index=False, sheet_name='Resultados DGM')
-    writer.close()
-    processed_data = output.getvalue()
-    return processed_data
+def to_csv(df):
+    # Converte o DataFrame para CSV como uma string
+    return df.to_csv(index=False).encode('utf-8')
 
 # --- Interface Streamlit ---
 st.set_page_config(
@@ -258,11 +251,10 @@ if st.button("Calcular DGM"):
             glandularidade_calc = calcular_glandularidade(idade, espessura_mama)
             if isinstance(glandularidade_calc, str):
                 st.error(f"Erro ao calcular Glandularidade: {glandularidade_calc}")
-                # Definir glandularidade para "Erro" ou similar para que cálculos posteriores falhem corretamente
-                glandularidade = "Erro" 
+                glandularidade = "Erro"
             else:
                 glandularidade = glandularidade_calc
-                st.info(f"**Glandularidade:** {glandularidade:.1f}%") # Exibição única
+                st.info(f"**Glandularidade:** {glandularidade:.1f}%")
 
     # --- Cálculo e Exibição de s ---
     with col2:
@@ -294,10 +286,6 @@ if st.button("Calcular DGM"):
             st.info(f"**Valor do Fator g:** {fator_g}")
             fator_g_val = fator_g
 
-    # --- REMOVIDAS AS MENSAGENS DE DEBUG ---
-    # st.info(f"**Debug Fator C - CSR:** {csr_val} (tipo: {type(csr_val)})")
-    # st.info(f"**Debug Fator C - Glandularidade:** {glandularidade} (tipo: {type(glandularidade)})")
-
     # --- Cálculo e Exibição de Fator C e Ki ---
     col5, col6 = st.columns(2)
     
@@ -325,7 +313,7 @@ if st.button("Calcular DGM"):
                 st.error(f"Erro no cálculo do Fator C: {fator_c_calc}")
             else:
                 fator_c = fator_c_calc
-                st.info(f"**Valor do Fator C:** {fator_c}") # Exibição única
+                st.info(f"**Valor do Fator C:** {fator_c}")
                 fator_c_val = fator_c
         else:
             st.warning("Fator C não calculado devido a entradas inválidas de CSR ou Glandularidade.")
@@ -369,19 +357,20 @@ if st.button("Calcular DGM"):
         }
         st.session_state.resultados_dgm = pd.concat([st.session_state.resultados_dgm, pd.DataFrame([nova_linha])], ignore_index=True)
 
-# --- (Mantenha a exibição do Histórico e botões de download/limpeza) ---
+# --- Exibição do Histórico e Botões ---
 st.markdown("---")
 st.subheader("Histórico de Cálculos:")
 
 if not st.session_state.resultados_dgm.empty:
     st.dataframe(st.session_state.resultados_dgm, use_container_width=True)
     
-    excel_data = to_excel(st.session_state.resultados_dgm)
+    # MUDAÇA AQUI: de st.download_button para baixar CSV
+    csv_data = to_csv(st.session_state.resultados_dgm)
     st.download_button(
-        label="📥 Baixar Resultados como Excel",
-        data=excel_data,
-        file_name=f"resultados_dgm_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        label="📥 Baixar Resultados como CSV", # Texto do botão
+        data=csv_data,
+        file_name=f"resultados_dgm_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv", # Nome do arquivo
+        mime="text/csv", # Tipo MIME para CSV
     )
     
     if st.button("Limpar Histórico"):
