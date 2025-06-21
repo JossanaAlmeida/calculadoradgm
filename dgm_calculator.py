@@ -12,21 +12,77 @@ alvo_filtro_options = {
     'W/Rh': 1.042
 }
 
-# Fórmulas para CSR
+# --- DICIONÁRIOS GLOBAIS (MOVIDOS PARA CÁ) ---
+
+# Dicionário de fórmulas para CSR
+formulas_csr = {
+    'Mo/Mo': 0.01 * 0 + 0.08, # Valor inicial, será substituído
+    'Mo/Rh': 0.0067 * 0 + 0.2333,
+    'Rh/Rh': 0.0167 * 0 - 0.0367,
+    'W/Rh': 0.0067 * 0 + 0.3533
+}
+
+# Dicionário de g_values (Fator G) - OBS: A lógica do fator g agora usa equações
+# mas o dicionário ainda estava presente. Se não for mais necessário, pode ser removido.
+g_values_old = {
+    0.30: [0.390, 0.274, 0.207, 0.183, 0.164, 0.135, 0.114, 0.098, 0.0859, 0.0763, 0.0687],
+    0.35: [0.433, 0.309, 0.235, 0.208, 0.187, 0.154, 0.130, 0.112, 0.0981, 0.0873, 0.0783],
+    0.40: [0.473, 0.342, 0.261, 0.232, 0.209, 0.172, 0.145, 0.126, 0.1106, 0.0986, 0.0887],
+    0.45: [0.509, 0.374, 0.289, 0.258, 0.232, 0.192, 0.163, 0.140, 0.1233, 0.1096, 0.0988],
+    0.50: [0.543, 0.406, 0.318, 0.285, 0.258, 0.214, 0.177, 0.154, 0.1357, 0.1207, 0.1088],
+    0.55: [0.573, 0.437, 0.346, 0.311, 0.287, 0.236, 0.202, 0.175, 0.1543, 0.1375, 0.1240],
+    0.60: [0.587, 0.466, 0.374, 0.339, 0.310, 0.261, 0.224, 0.195, 0.1723, 0.1540, 0.1385],
+}
+
+
+# Tabela Ki
+tabela_ki_global = {
+    ('Mo/Mo', 26): 0.1357,
+    ('Mo/Mo', 27): 0.1530,
+    ('Mo/Rh', 29): 0.1540,
+    ('Mo/Rh', 31): 0.1830,
+}
+
+
+# Dicionário de fórmulas para Fator C
+formulas_fator_c = { # Novo nome para o dicionário do Fator C
+    0.34: {1: lambda e: (0.0004 * e**3) - (0.0105 * e**2) + (0.093 * e) + 0.9449, 2: lambda e: 0.0001 * e**3 - 0.0035 * e**2 + 0.0295 * e + 0.9831, 3: lambda e: -0.0001 * e**3 + 0.0028 * e**2 - 0.0242 * e + 1.0105, 4: lambda e: -0.0005 * e**3 + 0.0103 * e**2 - 0.0773 * e + 1.0343},
+    0.35: {1: lambda e: (0.0004 * e**3) - (0.0105 * e**2) + (0.093 * e) + 0.9449, 2: lambda e: 0.0001 * e**3 - 0.0035 * e**2 + 0.0295 * e + 0.9831, 3: lambda e: -0.0001 * e**3 + 0.0028 * e**2 - 0.0242 * e + 1.0105, 4: lambda e: -0.0005 * e**3 + 0.0103 * e**2 - 0.0773 * e + 1.0343},
+    0.36: {1: lambda e: 0.0004 * e**3 - 0.0103 * e**2 + 0.0915 * e + 0.9443, 2: lambda e: 0.0002 * e**3 - 0.0044 * e**2 + 0.0338 * e + 0.9768, 3: lambda e: -0.0001 * e**3 + 0.0029 * e**2 - 0.0248 * e + 1.0118, 4: lambda e: -0.0004 * e**3 + 0.0093 * e**2 - 0.0726 * e + 1.03},
+    0.37: {1: lambda e: 0.0005 * e**3 - 0.0117 * e**2 + 0.098 * e + 0.9345, 2: lambda e: 0.0002 * e**3 - 0.0041 * e**2 + 0.0325 * e + 0.9783, 3: lambda e: -0.0001 * e**3 + 0.003 * e**2 - 0.0247 * e + 1.0117, 4: lambda e: -0.0004 * e**3 + 0.0091 * e**2 - 0.0718 * e + 1.0304},
+    0.38: {1: lambda e: 0.0005 * e**3 - 0.0117 * e**2 + 0.0978 * e + 0.9342, 2: lambda e: 0.0002 * e**3 - 0.0041 * e**2 + 0.0324 * e + 0.9782, 3: lambda e: -0.0001 * e**3 + 0.0031 * e**2 - 0.0252 * e + 1.0126, 4: lambda e: -0.0004 * e**3 + 0.009 * e**2 - 0.0715 * e + 1.0306},
+    0.39: {1: lambda e: 0.0005 * e**3 - 0.0116 * e**2 + 0.0974 * e + 0.934, 2: lambda e: 0.0002 * e**3 - 0.0041 * e**2 + 0.0324 * e + 0.9782, 3: lambda e: -0.0001 * e**3 + 0.0031 * e**2 - 0.0251 * e + 1.0126, 4: lambda e: -0.0004 * e**3 + 0.0089 * e**2 - 0.0712 * e + 1.0311},
+    0.40: {1: lambda e: 0.0005 * e**3 - 0.0114 * e**2 + 0.0959 * e + 0.9335, 2: lambda e: 0.0002 * e**3 - 0.0041 * e**2 + 0.0322 * e + 0.9779, 3: lambda e: -0.0001 * e**3 + 0.0031 * e**2 - 0.0248 * e + 1.0128, 4: lambda e: -0.0004 * e**3 + 0.0087 * e**2 - 0.0703 * e + 1.0324},
+    0.41: {1: lambda e: 0.0007 * e**3 - 0.0154 * e**2 + 0.1207 * e + 0.8822, 2: lambda e: 0.0002 * e**3 - 0.0036 * e**2 + 0.0299 * e + 0.9801, 3: lambda e: -0.0001 * e**3 + 0.0031 * e**2 - 0.0248 * e + 1.0125, 4: lambda e: -0.0004 * e**3 + 0.009 * e**2 - 0.0716 * e + 1.0352},
+    0.42: {1: lambda e: 0.0007 * e**3 - 0.0165 * e**2 + 0.1278 * e + 0.8677, 2: lambda e: 0.0001 * e**3 - 0.0034 * e**2 + 0.0293 * e + 0.9807, 3: lambda e: -0.0001 * e**3 + 0.0031 * e**2 - 0.0247 * e + 1.0124, 4: lambda e: -0.0004 * e**3 + 0.0091 * e**2 - 0.0719 * e + 1.0358},
+    0.43: {1: lambda e: 0.0008 * e**3 - 0.0177 * e**2 + 0.1349 * e + 0.853, 2: lambda e: 0.0001 * e**3 - 0.0033 * e**2 + 0.0286 * e + 0.9815, 3: lambda e: -0.0001 * e**3 + 0.0031 * e**2 - 0.0247 * e + 1.0124, 4: lambda e: -0.0004 * e**3 + 0.0092 * e**2 - 0.0724 * e + 1.0368},
+    0.44: {1: lambda e: 0.0009 * e**3 - 0.0188 * e**2 + 0.1419 * e + 0.8384, 2: lambda e: 0.0001 * e**3 - 0.0032 * e**2 + 0.0279 * e + 0.9822, 3: lambda e: -0.0001 * e**3 + 0.0031 * e**2 - 0.0246 * e + 1.0122, 4: lambda e: -0.0004 * e**3 + 0.0092 * e**2 - 0.0727 * e + 1.0375},
+    0.45: {1: lambda e: 0.0011 * e**3 - 0.0229 * e**2 + 0.1669 * e + 0.787, 2: lambda e: 0.00009 * e**3 - 0.0026 * e**2 + 0.0252 * e + 0.9851, 3: lambda e: -0.0001 * e**3 + 0.0029 * e**2 - 0.0238 * e + 1.0109, 4: lambda e: -0.0004 * e**3 + 0.009 * e**2 - 0.0719 * e + 1.0374},
+    0.46: {1: lambda e: 0.0007 * e**3 - 0.0162 * e**2 + 0.1292 * e + 0.8523, 2: lambda e: 0.00008 * e**3 - 0.0024 * e**2 + 0.0241 * e + 0.9865, 3: lambda e: -0.0001 * e**3 + 0.0029 * e**2 - 0.0241 * e + 1.0127, 4: lambda e: -0.0004 * e**3 + 0.0087 * e**2 - 0.0706 * e + 1.0377},
+    0.47: {1: lambda e: 0.0006 * e**3 - 0.015 * e**2 + 0.1216 * e + 0.8666, 2: lambda e: 0.00008 * e**3 - 0.0024 * e**2 + 0.0238 * e + 0.9869, 3: lambda e: -0.0001 * e**3 + 0.0029 * e**2 - 0.0242 * e + 1.0132, 4: lambda e: -0.0004 * e**3 + 0.0086 * e**2 - 0.07 * e + 1.0375},
+    0.48: {1: lambda e: 0.0008 * e**3 - 0.0177 * e**2 + 0.1349 * e + 0.853, 2: lambda e: 0.0008 * e**3 - 0.0177 * e**2 + 0.1349 * e + 0.853, 3: lambda e: 0.0004 * e**3 - 0.0105 * e**2 + 0.093 * e + 1.077, 4: lambda e: -0.0004 * e**3 + 0.0093 * e**2 - 0.0726 * e + 1.03},
+    0.50: {1: lambda e: (0.0004 * e**3) - (0.0105 * e**2) + (0.093 * e) + 1.077, 2: lambda e: 0.0008 * e**3 - 0.0177 * e**2 + 0.1349 * e**2 + 0.853, 3: lambda e: 0.0004 * e**3 - 0.0105 * e**2 + 0.093 * e + 1.077, 4: lambda e: -0.0004 * e**3 + 0.0093 * e**2 - 0.0726 * e + 1.03},
+}
+
+# --- FIM DICIONÁRIOS GLOBAIS ---
+
+
+# Fórmulas para CSR (função)
 def calcular_csr(kv, alvo_filtro):
     try:
         kv = float(kv)
-        formulas = {
+        # O dicionário 'formulas' para CSR agora é global: formulas_csr
+        formulas_csr_local = {
             'Mo/Mo': 0.01 * kv + 0.08,
             'Mo/Rh': 0.0067 * kv + 0.2333,
             'Rh/Rh': 0.0167 * kv - 0.0367,
             'W/Rh': 0.0067 * kv + 0.3533
         }
-        return round(formulas.get(alvo_filtro, "Alvo/filtro inválido"), 2)
+        return round(formulas_csr_local.get(alvo_filtro, "Alvo/filtro inválido"), 2)
     except ValueError:
         return "Entrada inválida para Kv"
 
-# FUNÇÃO calcular_fator_g (mantida como a última versão que te enviei)
+# FUNÇÃO calcular_fator_g (mantida como a última versão)
 def calcular_fator_g(csr, espessura):
     """
     Calcula o fator g usando a equação polinomial G = a0 + a1*x + a2*x^2 + a3*x^3,
@@ -102,7 +158,7 @@ def calcular_glandularidade(idade, espessura_mama_cm):
     # Garante que a glandularidade não seja negativa e arredonda
     return max(0, round(G, 2))
 
-# Função para calcular o fator C (mantida)
+# Função para calcular o fator C
 def calcular_fator_c(csr, espessura, glandularidade):
     try:
         espessura = float(espessura)
@@ -118,44 +174,22 @@ def calcular_fator_c(csr, espessura, glandularidade):
         else:
             grupo_val = 4
 
-        formulas = {
-            0.34: {1: lambda e: (0.0004 * e**3) - (0.0105 * e**2) + (0.093 * e) + 0.9449, 2: lambda e: 0.0001 * e**3 - 0.0035 * e**2 + 0.0295 * e + 0.9831, 3: lambda e: -0.0001 * e**3 + 0.0028 * e**2 - 0.0242 * e + 1.0105, 4: lambda e: -0.0005 * e**3 + 0.0103 * e**2 - 0.0773 * e + 1.0343},
-            0.35: {1: lambda e: (0.0004 * e**3) - (0.0105 * e**2) + (0.093 * e) + 0.9449, 2: lambda e: 0.0001 * e**3 - 0.0035 * e**2 + 0.0295 * e + 0.9831, 3: lambda e: -0.0001 * e**3 + 0.0028 * e**2 - 0.0242 * e + 1.0105, 4: lambda e: -0.0005 * e**3 + 0.0103 * e**2 - 0.0773 * e + 1.0343},
-            0.36: {1: lambda e: 0.0004 * e**3 - 0.0103 * e**2 + 0.0915 * e + 0.9443, 2: lambda e: 0.0002 * e**3 - 0.0044 * e**2 + 0.0338 * e + 0.9768, 3: lambda e: -0.0001 * e**3 + 0.0029 * e**2 - 0.0248 * e + 1.0118, 4: lambda e: -0.0004 * e**3 + 0.0093 * e**2 - 0.0726 * e + 1.03},
-            0.37: {1: lambda e: 0.0005 * e**3 - 0.0117 * e**2 + 0.098 * e + 0.9345, 2: lambda e: 0.0002 * e**3 - 0.0041 * e**2 + 0.0325 * e + 0.9783, 3: lambda e: -0.0001 * e**3 + 0.003 * e**2 - 0.0247 * e + 1.0117, 4: lambda e: -0.0004 * e**3 + 0.0091 * e**2 - 0.0718 * e + 1.0304},
-            0.38: {1: lambda e: 0.0005 * e**3 - 0.0117 * e**2 + 0.0978 * e + 0.9342, 2: lambda e: 0.0002 * e**3 - 0.0041 * e**2 + 0.0324 * e + 0.9782, 3: lambda e: -0.0001 * e**3 + 0.0031 * e**2 - 0.0252 * e + 1.0126, 4: lambda e: -0.0004 * e**3 + 0.009 * e**2 - 0.0715 * e + 1.0306},
-            0.39: {1: lambda e: 0.0005 * e**3 - 0.0116 * e**2 + 0.0974 * e + 0.934, 2: lambda e: 0.0002 * e**3 - 0.0041 * e**2 + 0.0324 * e + 0.9782, 3: lambda e: -0.0001 * e**3 + 0.0031 * e**2 - 0.0251 * e + 1.0126, 4: lambda e: -0.0004 * e**3 + 0.0089 * e**2 - 0.0712 * e + 1.0311},
-            0.40: {1: lambda e: 0.0005 * e**3 - 0.0114 * e**2 + 0.0959 * e + 0.9335, 2: lambda e: 0.0002 * e**3 - 0.0041 * e**2 + 0.0322 * e + 0.9779, 3: lambda e: -0.0001 * e**3 + 0.0031 * e**2 - 0.0248 * e + 1.0128, 4: lambda e: -0.0004 * e**3 + 0.0087 * e**2 - 0.0703 * e + 1.0324},
-            0.41: {1: lambda e: 0.0007 * e**3 - 0.0154 * e**2 + 0.1207 * e + 0.8822, 2: lambda e: 0.0002 * e**3 - 0.0036 * e**2 + 0.0299 * e + 0.9801, 3: lambda e: -0.0001 * e**3 + 0.0031 * e**2 - 0.0248 * e + 1.0125, 4: lambda e: -0.0004 * e**3 + 0.009 * e**2 - 0.0716 * e + 1.0352},
-            0.42: {1: lambda e: 0.0007 * e**3 - 0.0165 * e**2 + 0.1278 * e + 0.8677, 2: lambda e: 0.0001 * e**3 - 0.0034 * e**2 + 0.0293 * e + 0.9807, 3: lambda e: -0.0001 * e**3 + 0.0031 * e**2 - 0.0247 * e + 1.0124, 4: lambda e: -0.0004 * e**3 + 0.0091 * e**2 - 0.0719 * e + 1.0358},
-            0.43: {1: lambda e: 0.0008 * e**3 - 0.0177 * e**2 + 0.1349 * e + 0.853, 2: lambda e: 0.0001 * e**3 - 0.0033 * e**2 + 0.0286 * e + 0.9815, 3: lambda e: -0.0001 * e**3 + 0.0031 * e**2 - 0.0247 * e + 1.0124, 4: lambda e: -0.0004 * e**3 + 0.0092 * e**2 - 0.0724 * e + 1.0368},
-            0.44: {1: lambda e: 0.0009 * e**3 - 0.0188 * e**2 + 0.1419 * e + 0.8384, 2: lambda e: 0.0001 * e**3 - 0.0032 * e**2 + 0.0279 * e + 0.9822, 3: lambda e: -0.0001 * e**3 + 0.0031 * e**2 - 0.0246 * e + 1.0122, 4: lambda e: -0.0004 * e**3 + 0.0092 * e**2 - 0.0727 * e + 1.0375},
-            0.45: {1: lambda e: 0.0011 * e**3 - 0.0229 * e**2 + 0.1669 * e + 0.787, 2: lambda e: 0.00009 * e**3 - 0.0026 * e**2 + 0.0252 * e + 0.9851, 3: lambda e: -0.0001 * e**3 + 0.0029 * e**2 - 0.0238 * e + 1.0109, 4: lambda e: -0.0004 * e**3 + 0.009 * e**2 - 0.0719 * e + 1.0374},
-            0.46: {1: lambda e: 0.0007 * e**3 - 0.0162 * e**2 + 0.1292 * e + 0.8523, 2: lambda e: 0.00008 * e**3 - 0.0024 * e**2 + 0.0241 * e + 0.9865, 3: lambda e: -0.0001 * e**3 + 0.0029 * e**2 - 0.0241 * e + 1.0127, 4: lambda e: -0.0004 * e**3 + 0.0087 * e**2 - 0.0706 * e + 1.0377},
-            0.47: {1: lambda e: 0.0006 * e**3 - 0.015 * e**2 + 0.1216 * e + 0.8666, 2: lambda e: 0.00008 * e**3 - 0.0024 * e**2 + 0.0238 * e + 0.9869, 3: lambda e: -0.0001 * e**3 + 0.0029 * e**2 - 0.0242 * e + 1.0132, 4: lambda e: -0.0004 * e**3 + 0.0086 * e**2 - 0.07 * e + 1.0375},
-            0.48: {1: lambda e: 0.0008 * e**3 - 0.0177 * e**2 + 0.1349 * e + 0.853, 2: lambda e: 0.0008 * e**3 - 0.0177 * e**2 + 0.1349 * e + 0.853, 3: lambda e: 0.0004 * e**3 - 0.0105 * e**2 + 0.093 * e + 1.077, 4: lambda e: -0.0004 * e**3 + 0.0093 * e**2 - 0.0726 * e + 1.03},
-            0.50: {1: lambda e: (0.0004 * e**3) - (0.0105 * e**2) + (0.093 * e) + 1.077, 2: lambda e: 0.0008 * e**3 - 0.0177 * e**2 + 0.1349 * e**2 + 0.853, 3: lambda e: 0.0004 * e**3 - 0.0105 * e**2 + 0.093 * e + 1.077, 4: lambda e: -0.0004 * e**3 + 0.0093 * e**2 - 0.0726 * e + 1.03},
-        }
-        
-        csr_aproximado = min(formulas.keys(), key=lambda x: abs(x - csr))
+        # Usa o dicionário global: formulas_fator_c
+        csr_aproximado = min(formulas_fator_c.keys(), key=lambda x: abs(x - csr))
 
-        if csr_aproximado not in formulas:
+        if csr_aproximado not in formulas_fator_c:
             return "CSR fora do intervalo suportado."
 
-        fator_c = formulas[csr_aproximado][grupo_val](espessura) # Usa grupo_val aqui
+        fator_c = formulas_fator_c[csr_aproximado][grupo_val](espessura) # Usa grupo_val aqui
         return round(fator_c, 4)
 
     except (ValueError, TypeError):
         return "Entrada inválida"
 
+# Função para calcular o Ki
 def calcular_ki(kv, alvo_filtro, mas, espessura_mama):
-    tabela_ki = {
-        ('Mo/Mo', 26): 0.1357,
-        ('Mo/Mo', 27): 0.1530,
-        ('Mo/Rh', 29): 0.1540,
-        ('Mo/Rh', 31): 0.1830,
-    }
-    x = tabela_ki.get((alvo_filtro, int(kv)), 0)
+    # Usa o dicionário global: tabela_ki_global
+    x = tabela_ki_global.get((alvo_filtro, int(kv)), 0)
     
     if x == 0:
         return "Combinação de alvo/filtro e Kv não encontrada na tabela de Ki."
@@ -205,7 +239,6 @@ with st.sidebar:
     st.header("Dados de Entrada")
     idade = st.number_input('Idade:', min_value=1, max_value=120, value=45, help="Idade da paciente (usado para glandularidade automática)")
     
-    # MUDAÇA AQUI: De selectbox para number_input
     espessura_mama = st.number_input('Espessura da Mama (cm):', min_value=1.0, max_value=20.0, value=6.0, step=0.1, help="Espessura da mama comprimida em centímetros")
     
     alvo_filtro = st.selectbox('Alvo/Filtro:', options=list(alvo_filtro_options.keys()))
@@ -260,13 +293,18 @@ if st.button("Calcular DGM"):
 
     with col4:
         # Fator g agora usa a nova lógica
-        fator_g = calcular_fator_g(csr_val, espessura_mama) # Passa csr_val aqui
+        fator_g = calcular_fator_g(csr_val, espessura_mama)
         if isinstance(fator_g, str):
             st.error(f"Erro no cálculo do Fator g: {fator_g}")
             fator_g_val = "Erro"
         else:
             st.info(f"**Valor do Fator g:** {fator_g}")
             fator_g_val = fator_g
+
+    # --- Debugging: Exibir CSR e Glandularidade antes do Fator C ---
+    st.info(f"**Debug Fator C - CSR:** {csr_val} (tipo: {type(csr_val)})")
+    st.info(f"**Debug Fator C - Glandularidade:** {glandularidade} (tipo: {type(glandularidade)})")
+
 
     # --- Cálculo e Exibição de Fator C e Ki ---
     col5, col6 = st.columns(2)
@@ -286,13 +324,11 @@ if st.button("Calcular DGM"):
     with col5:
         fator_c = "Não calculado"
         fator_c_val = "Erro"
-        if isinstance(csr, (int, float)) and isinstance(glandularidade, (int, float)):
-            # Garante que csr_para_c esteja dentro das chaves de 'formulas'
-            csr_possiveis = list(formulas.keys()) # Pega as chaves do dicionário 'formulas'
-            csr_para_c = min(csr_possiveis, key=lambda x: abs(x - csr))
-
-            # if csr_para_c == 0.49: # Tratamento para 0.49 - esta lógica deve ser revisada se 0.49 não existir
-            #     csr_para_c = 0.50 # Força o uso de 0.50 como fallback
+        # Verifica se CSR e Glandularidade são números válidos antes de prosseguir
+        if isinstance(csr_val, (int, float)) and isinstance(glandularidade, (int, float)):
+            # Usando o dicionário global: formulas_fator_c
+            csr_possiveis_fator_c = list(formulas_fator_c.keys()) 
+            csr_para_c = min(csr_possiveis_fator_c, key=lambda x: abs(x - csr_val)) # Usar csr_val aqui
 
             fator_c_calc = calcular_fator_c(csr_para_c, espessura_mama, glandularidade)
 
