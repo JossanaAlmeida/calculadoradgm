@@ -12,7 +12,7 @@ alvo_filtro_options = {
     'W/Rh': 1.042
 }
 
-# --- DICIONÁRIOS GLOBAIS (MOVIDOS PARA CÁ) ---
+# --- DICIONÁRIOS GLOBAIS ---
 
 # Dicionário de fórmulas para CSR
 formulas_csr = {
@@ -22,8 +22,7 @@ formulas_csr = {
     'W/Rh': 0.0067 * 0 + 0.3533
 }
 
-# Dicionário de g_values (Fator G) - OBS: A lógica do fator g agora usa equações
-# mas o dicionário ainda estava presente. Se não for mais necessário, pode ser removido.
+# Dicionário de g_values (Fator G) - Antigo, mantido para evitar NameError se houver outras refs
 g_values_old = {
     0.30: [0.390, 0.274, 0.207, 0.183, 0.164, 0.135, 0.114, 0.098, 0.0859, 0.0763, 0.0687],
     0.35: [0.433, 0.309, 0.235, 0.208, 0.187, 0.154, 0.130, 0.112, 0.0981, 0.0873, 0.0783],
@@ -34,7 +33,6 @@ g_values_old = {
     0.60: [0.587, 0.466, 0.374, 0.339, 0.310, 0.261, 0.224, 0.195, 0.1723, 0.1540, 0.1385],
 }
 
-
 # Tabela Ki
 tabela_ki_global = {
     ('Mo/Mo', 26): 0.1357,
@@ -43,9 +41,8 @@ tabela_ki_global = {
     ('Mo/Rh', 31): 0.1830,
 }
 
-
 # Dicionário de fórmulas para Fator C
-formulas_fator_c = { # Novo nome para o dicionário do Fator C
+formulas_fator_c = {
     0.34: {1: lambda e: (0.0004 * e**3) - (0.0105 * e**2) + (0.093 * e) + 0.9449, 2: lambda e: 0.0001 * e**3 - 0.0035 * e**2 + 0.0295 * e + 0.9831, 3: lambda e: -0.0001 * e**3 + 0.0028 * e**2 - 0.0242 * e + 1.0105, 4: lambda e: -0.0005 * e**3 + 0.0103 * e**2 - 0.0773 * e + 1.0343},
     0.35: {1: lambda e: (0.0004 * e**3) - (0.0105 * e**2) + (0.093 * e) + 0.9449, 2: lambda e: 0.0001 * e**3 - 0.0035 * e**2 + 0.0295 * e + 0.9831, 3: lambda e: -0.0001 * e**3 + 0.0028 * e**2 - 0.0242 * e + 1.0105, 4: lambda e: -0.0005 * e**3 + 0.0103 * e**2 - 0.0773 * e + 1.0343},
     0.36: {1: lambda e: 0.0004 * e**3 - 0.0103 * e**2 + 0.0915 * e + 0.9443, 2: lambda e: 0.0002 * e**3 - 0.0044 * e**2 + 0.0338 * e + 0.9768, 3: lambda e: -0.0001 * e**3 + 0.0029 * e**2 - 0.0248 * e + 1.0118, 4: lambda e: -0.0004 * e**3 + 0.0093 * e**2 - 0.0726 * e + 1.03},
@@ -61,7 +58,7 @@ formulas_fator_c = { # Novo nome para o dicionário do Fator C
     0.46: {1: lambda e: 0.0007 * e**3 - 0.0162 * e**2 + 0.1292 * e + 0.8523, 2: lambda e: 0.00008 * e**3 - 0.0024 * e**2 + 0.0241 * e + 0.9865, 3: lambda e: -0.0001 * e**3 + 0.0029 * e**2 - 0.0241 * e + 1.0127, 4: lambda e: -0.0004 * e**3 + 0.0087 * e**2 - 0.0706 * e + 1.0377},
     0.47: {1: lambda e: 0.0006 * e**3 - 0.015 * e**2 + 0.1216 * e + 0.8666, 2: lambda e: 0.00008 * e**3 - 0.0024 * e**2 + 0.0238 * e + 0.9869, 3: lambda e: -0.0001 * e**3 + 0.0029 * e**2 - 0.0242 * e + 1.0132, 4: lambda e: -0.0004 * e**3 + 0.0086 * e**2 - 0.07 * e + 1.0375},
     0.48: {1: lambda e: 0.0008 * e**3 - 0.0177 * e**2 + 0.1349 * e + 0.853, 2: lambda e: 0.0008 * e**3 - 0.0177 * e**2 + 0.1349 * e + 0.853, 3: lambda e: 0.0004 * e**3 - 0.0105 * e**2 + 0.093 * e + 1.077, 4: lambda e: -0.0004 * e**3 + 0.0093 * e**2 - 0.0726 * e + 1.03},
-    0.50: {1: lambda e: (0.0004 * e**3) - (0.0105 * e**2) + (0.093 * e) + 1.077, 2: lambda e: 0.0008 * e**3 - 0.0177 * e**2 + 0.1349 * e**2 + 0.853, 3: lambda e: 0.0004 * e**3 - 0.0105 * e**2 + 0.093 * e + 1.077, 4: lambda e: -0.0004 * e**3 + 0.0093 * e**2 - 0.0726 * e + 1.03},
+    0.50: {1: lambda e: (0.0004 * e**3) - (0.0105 * e**2) + (0.093 * e) + 1.077, 2: lambda e: 0.0008 * e**3 - 0.0177 * e**2 + 0.1349 * e**2 + 0.853, 3: lambda e: 0.0004 * e**3 - (0.0105 * e**2) + (0.093 * e) + 1.077, 4: lambda e: -0.0004 * e**3 + 0.0093 * e**2 - 0.0726 * e + 1.03},
 }
 
 # --- FIM DICIONÁRIOS GLOBAIS ---
@@ -71,7 +68,6 @@ formulas_fator_c = { # Novo nome para o dicionário do Fator C
 def calcular_csr(kv, alvo_filtro):
     try:
         kv = float(kv)
-        # O dicionário 'formulas' para CSR agora é global: formulas_csr
         formulas_csr_local = {
             'Mo/Mo': 0.01 * kv + 0.08,
             'Mo/Rh': 0.0067 * kv + 0.2333,
@@ -90,9 +86,9 @@ def calcular_fator_g(csr, espessura):
     """
     try:
         csr = float(csr)
-        espessura = float(espessura) # Garante que espessura é float para o cálculo
+        espessura = float(espessura) 
 
-        a0, a1, a2, a3 = 0, 0, 0, 0 # Inicializa com zero
+        a0, a1, a2, a3 = 0, 0, 0, 0
 
         if csr <= 0.30:
             a0, a1, a2, a3 = 0.6862414, -0.1903851, 0.0211549, -0.0008170
@@ -111,10 +107,8 @@ def calcular_fator_g(csr, espessura):
         else:
             return "CSR fora do intervalo suportado para cálculo do fator g."
 
-        # Calcula o fator g usando a equação
         fator_g_calculado = (a0 + (a1 * espessura) + (a2 * (espessura**2)) + (a3 * (espessura**3)))
         
-        # Garante que o fator g não seja negativo e arredonda para um número razoável de casas
         return max(0, round(fator_g_calculado, 4))
     
     except ValueError:
@@ -126,7 +120,7 @@ def calcular_glandularidade(idade, espessura_mama_cm):
     Calcula a glandularidade usando a fórmula G = at^3 + bt^2 + ct + k.
     t é a espessura da mama em mm.
     """
-    espessura_mama_mm = espessura_mama_cm * 10 # Converte cm para mm
+    espessura_mama_mm = espessura_mama_cm * 10
 
     # Define as constantes com base na idade
     if 30 <= idade <= 49:
@@ -155,16 +149,15 @@ def calcular_glandularidade(idade, espessura_mama_cm):
     # Calcula G
     G = (a * (espessura_mama_mm**3)) + (b * (espessura_mama_mm**2)) + (c * espessura_mama_mm) + k
     
-    # Garante que a glandularidade não seja negativa e arredonda
     return max(0, round(G, 2))
 
-# Função para calcular o fator C
+# Função para calcular o fator C (mantida)
 def calcular_fator_c(csr, espessura, glandularidade):
     try:
         espessura = float(espessura)
         glandularidade = float(glandularidade)
 
-        grupo_val = 0 # Inicializa grupo_val
+        grupo_val = 0
         if glandularidade <= 25:
             grupo_val = 1
         elif glandularidade <= 50:
@@ -180,13 +173,13 @@ def calcular_fator_c(csr, espessura, glandularidade):
         if csr_aproximado not in formulas_fator_c:
             return "CSR fora do intervalo suportado."
 
-        fator_c = formulas_fator_c[csr_aproximado][grupo_val](espessura) # Usa grupo_val aqui
+        fator_c = formulas_fator_c[csr_aproximado][grupo_val](espessura)
         return round(fator_c, 4)
 
     except (ValueError, TypeError):
         return "Entrada inválida"
 
-# Função para calcular o Ki
+# Função para calcular o Ki (mantida)
 def calcular_ki(kv, alvo_filtro, mas, espessura_mama):
     # Usa o dicionário global: tabela_ki_global
     x = tabela_ki_global.get((alvo_filtro, int(kv)), 0)
@@ -200,6 +193,7 @@ def calcular_ki(kv, alvo_filtro, mas, espessura_mama):
 
     return round(((x * mas)*2500) / divisor, 2)
 
+# Função para calcular o DGM (mantida)
 def calcular_dgm(ki, s, fator_g, fator_c):
     try:
         dgm = ki * s * fator_g * fator_c
@@ -207,11 +201,11 @@ def calcular_dgm(ki, s, fator_g, fator_c):
     except (ValueError, TypeError):
         return "Entrada inválida para o cálculo do DGM"
 
-# --- Funções para Excel Download ---
-@st.cache_data # Cache a função para melhor desempenho
+# Funções para Excel Download (mantida)
+@st.cache_data
 def to_excel(df):
     output = io.BytesIO()
-    writer = pd.ExcelWriter(output, engine='xlsxwriter') # Usando xlsxwriter
+    writer = pd.ExcelWriter(output, engine='xlsxwriter')
     df.to_excel(writer, index=False, sheet_name='Resultados DGM')
     writer.close()
     processed_data = output.getvalue()
@@ -238,9 +232,7 @@ if 'resultados_dgm' not in st.session_state:
 with st.sidebar:
     st.header("Dados de Entrada")
     idade = st.number_input('Idade:', min_value=1, max_value=120, value=45, help="Idade da paciente (usado para glandularidade automática)")
-    
     espessura_mama = st.number_input('Espessura da Mama (cm):', min_value=1.0, max_value=20.0, value=6.0, step=0.1, help="Espessura da mama comprimida em centímetros")
-    
     alvo_filtro = st.selectbox('Alvo/Filtro:', options=list(alvo_filtro_options.keys()))
     kv = st.number_input('Kv:', min_value=1.0, max_value=50.0, value=28.0, step=0.1)
     mas = st.number_input('mAs:', min_value=0.1, max_value=1000.0, value=50.0, step=0.1)
@@ -256,7 +248,7 @@ if st.button("Calcular DGM"):
     st.subheader("Resultados do Cálculo Atual:")
 
     # --- Cálculo e Exibição de Glandularidade ---
-    col1, col2 = st.columns(2) # Cria 2 colunas para agrupar
+    col1, col2 = st.columns(2)
     glandularidade = None
     with col1:
         if sabe_glandularidade and glandularidade_input is not None:
@@ -266,9 +258,11 @@ if st.button("Calcular DGM"):
             glandularidade_calc = calcular_glandularidade(idade, espessura_mama)
             if isinstance(glandularidade_calc, str):
                 st.error(f"Erro ao calcular Glandularidade: {glandularidade_calc}")
+                # Definir glandularidade para "Erro" ou similar para que cálculos posteriores falhem corretamente
+                glandularidade = "Erro" 
             else:
                 glandularidade = glandularidade_calc
-                st.info(f"**Glandularidade estimada:** {glandularidade:.1f}%")
+                st.info(f"**Glandularidade:** {glandularidade:.1f}%") # Exibição única
 
     # --- Cálculo e Exibição de s ---
     with col2:
@@ -292,7 +286,6 @@ if st.button("Calcular DGM"):
             csr_val = csr
 
     with col4:
-        # Fator g agora usa a nova lógica
         fator_g = calcular_fator_g(csr_val, espessura_mama)
         if isinstance(fator_g, str):
             st.error(f"Erro no cálculo do Fator g: {fator_g}")
@@ -301,15 +294,13 @@ if st.button("Calcular DGM"):
             st.info(f"**Valor do Fator g:** {fator_g}")
             fator_g_val = fator_g
 
-    # --- Debugging: Exibir CSR e Glandularidade antes do Fator C ---
-    st.info(f"**Debug Fator C - CSR:** {csr_val} (tipo: {type(csr_val)})")
-    st.info(f"**Debug Fator C - Glandularidade:** {glandularidade} (tipo: {type(glandularidade)})")
-
+    # --- REMOVIDAS AS MENSAGENS DE DEBUG ---
+    # st.info(f"**Debug Fator C - CSR:** {csr_val} (tipo: {type(csr_val)})")
+    # st.info(f"**Debug Fator C - Glandularidade:** {glandularidade} (tipo: {type(glandularidade)})")
 
     # --- Cálculo e Exibição de Fator C e Ki ---
     col5, col6 = st.columns(2)
     
-    # Adicionando o cálculo do grupo da glandularidade aqui para ser salvo
     grupo_glandularidade_val = "Não calculado"
     if isinstance(glandularidade, (int, float)):
         if glandularidade <= 25:
@@ -324,11 +315,9 @@ if st.button("Calcular DGM"):
     with col5:
         fator_c = "Não calculado"
         fator_c_val = "Erro"
-        # Verifica se CSR e Glandularidade são números válidos antes de prosseguir
         if isinstance(csr_val, (int, float)) and isinstance(glandularidade, (int, float)):
-            # Usando o dicionário global: formulas_fator_c
             csr_possiveis_fator_c = list(formulas_fator_c.keys()) 
-            csr_para_c = min(csr_possiveis_fator_c, key=lambda x: abs(x - csr_val)) # Usar csr_val aqui
+            csr_para_c = min(csr_possiveis_fator_c, key=lambda x: abs(x - csr_val))
 
             fator_c_calc = calcular_fator_c(csr_para_c, espessura_mama, glandularidade)
 
@@ -336,7 +325,7 @@ if st.button("Calcular DGM"):
                 st.error(f"Erro no cálculo do Fator C: {fator_c_calc}")
             else:
                 fator_c = fator_c_calc
-                st.info(f"**Valor do Fator C:** {fator_c}")
+                st.info(f"**Valor do Fator C:** {fator_c}") # Exibição única
                 fator_c_val = fator_c
         else:
             st.warning("Fator C não calculado devido a entradas inválidas de CSR ou Glandularidade.")
@@ -351,7 +340,7 @@ if st.button("Calcular DGM"):
             ki_val = ki
 
     # --- Cálculo e Exibição final da DGM ---
-    st.markdown("---") # Linha divisória antes da DGM final
+    st.markdown("---")
     dgm_val = "Erro"
     if all(isinstance(val, (int, float)) for val in [ki_val, s_val, fator_g_val, fator_c_val]):
         dgm = calcular_dgm(ki_val, s_val, fator_g_val, fator_c_val)
