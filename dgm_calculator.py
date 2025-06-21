@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-import io # Para lidar com dados binários em memória
+import io
 
 # Define as opções para o alvo/filtro
 alvo_filtro_options = {
@@ -26,36 +26,45 @@ def calcular_csr(kv, alvo_filtro):
     except ValueError:
         return "Entrada inválida para Kv"
 
-# Função para calcular o fator g
+# FUNÇÃO calcular_fator_g (mantida como a última versão que te enviei)
 def calcular_fator_g(csr, espessura):
+    """
+    Calcula o fator g usando a equação polinomial G = a0 + a1*x + a2*x^2 + a3*x^3,
+    onde x é a espessura da mama em cm e a0, a1, a2, a3 dependem do CSR.
+    """
     try:
         csr = float(csr)
-        espessura = int(espessura)
+        espessura = float(espessura) # Garante que espessura é float para o cálculo
 
-        g_values = {
-            0.30: [0.390, 0.274, 0.207, 0.183, 0.164, 0.135, 0.114, 0.098, 0.0859, 0.0763, 0.0687],
-            0.35: [0.433, 0.309, 0.235, 0.208, 0.187, 0.154, 0.130, 0.112, 0.0981, 0.0873, 0.0783],
-            0.40: [0.473, 0.342, 0.261, 0.232, 0.209, 0.172, 0.145, 0.126, 0.1106, 0.0986, 0.0887],
-            0.45: [0.509, 0.374, 0.289, 0.258, 0.232, 0.192, 0.163, 0.140, 0.1233, 0.1096, 0.0988],
-            0.50: [0.543, 0.406, 0.318, 0.285, 0.258, 0.214, 0.177, 0.154, 0.1357, 0.1207, 0.1088],
-            0.55: [0.573, 0.437, 0.346, 0.311, 0.287, 0.236, 0.202, 0.175, 0.1543, 0.1375, 0.1240],
-            0.60: [0.587, 0.466, 0.374, 0.339, 0.310, 0.261, 0.224, 0.195, 0.1723, 0.1540, 0.1385],
-        }
+        a0, a1, a2, a3 = 0, 0, 0, 0 # Inicializa com zero
 
-        espessuras_cm = [2, 3, 4, 4.5, 5, 6, 7, 8, 9, 10, 11]
+        if csr <= 0.30:
+            a0, a1, a2, a3 = 0.6862414, -0.1903851, 0.0211549, -0.0008170
+        elif csr <= 0.35:
+            a0, a1, a2, a3 = 0.7520924, -0.2040045, 0.0223514, -0.0008553
+        elif csr <= 0.40:
+            a0, a1, a2, a3 = 0.8135159, -0.2167391, 0.0234949, -0.0008925
+        elif csr <= 0.45:
+            a0, a1, a2, a3 = 0.8587792, -0.2213542, 0.0235061, -0.0008817
+        elif csr <= 0.50:
+            a0, a1, a2, a3 = 0.8926865, -0.2192870, 0.0224164, -0.0008171
+        elif csr <= 0.55:
+            a0, a1, a2, a3 = 0.9237367, -0.2189931, 0.0221241, -0.0008050
+        elif csr <= 0.60:
+            a0, a1, a2, a3 = 0.9131422, -0.1996713, 0.0190965, -0.0006696
+        else:
+            return "CSR fora do intervalo suportado para cálculo do fator g."
+
+        # Calcula o fator g usando a equação
+        fator_g_calculado = (a0 + (a1 * espessura) + (a2 * (espessura**2)) + (a3 * (espessura**3)))
         
-        # Encontra o CSR mais próximo, similar à sua lógica original
-        csr_proximo = min(g_values, key=lambda x: abs(x - csr))
-
-        try:
-            indice_espessura = espessuras_cm.index(espessura)
-            return g_values[csr_proximo][indice_espessura]
-        except ValueError:
-            return "Espessura da mama inválida"
+        # Garante que o fator g não seja negativo e arredonda para um número razoável de casas
+        return max(0, round(fator_g_calculado, 4))
+    
     except ValueError:
-        return "Entrada inválida"
+        return "Entrada inválida para cálculo do fator g"
 
-# --- FUNÇÃO DE GLANDULARIDADE ATUALIZADA ---
+# FUNÇÃO DE GLANDULARIDADE (mantida)
 def calcular_glandularidade(idade, espessura_mama_cm):
     """
     Calcula a glandularidade usando a fórmula G = at^3 + bt^2 + ct + k.
@@ -91,23 +100,23 @@ def calcular_glandularidade(idade, espessura_mama_cm):
     G = (a * (espessura_mama_mm**3)) + (b * (espessura_mama_mm**2)) + (c * espessura_mama_mm) + k
     
     # Garante que a glandularidade não seja negativa e arredonda
-    return max(0, round(G, 2)) # Glandularidade não deve ser negativa
-# --- FIM DA FUNÇÃO DE GLANDULARIDADE ATUALIZADA ---
+    return max(0, round(G, 2))
 
-# Função para calcular o fator C
+# Função para calcular o fator C (mantida)
 def calcular_fator_c(csr, espessura, glandularidade):
     try:
         espessura = float(espessura)
         glandularidade = float(glandularidade)
 
+        grupo_val = 0 # Inicializa grupo_val
         if glandularidade <= 25:
-            grupo = 1
+            grupo_val = 1
         elif glandularidade <= 50:
-            grupo = 2
+            grupo_val = 2
         elif glandularidade <= 75:
-            grupo = 3
+            grupo_val = 3
         else:
-            grupo = 4
+            grupo_val = 4
 
         formulas = {
             0.34: {1: lambda e: (0.0004 * e**3) - (0.0105 * e**2) + (0.093 * e) + 0.9449, 2: lambda e: 0.0001 * e**3 - 0.0035 * e**2 + 0.0295 * e + 0.9831, 3: lambda e: -0.0001 * e**3 + 0.0028 * e**2 - 0.0242 * e + 1.0105, 4: lambda e: -0.0005 * e**3 + 0.0103 * e**2 - 0.0773 * e + 1.0343},
@@ -133,7 +142,7 @@ def calcular_fator_c(csr, espessura, glandularidade):
         if csr_aproximado not in formulas:
             return "CSR fora do intervalo suportado."
 
-        fator_c = formulas[csr_aproximado][grupo](espessura)
+        fator_c = formulas[csr_aproximado][grupo_val](espessura) # Usa grupo_val aqui
         return round(fator_c, 4)
 
     except (ValueError, TypeError):
@@ -168,13 +177,12 @@ def calcular_dgm(ki, s, fator_g, fator_c):
 @st.cache_data # Cache a função para melhor desempenho
 def to_excel(df):
     output = io.BytesIO()
-    # MUDANÇA AQUI: de 'openpyxl' para 'xlsxwriter'
-    writer = pd.ExcelWriter(output, engine='xlsxwriter')
+    writer = pd.ExcelWriter(output, engine='xlsxwriter') # Usando xlsxwriter
     df.to_excel(writer, index=False, sheet_name='Resultados DGM')
     writer.close()
     processed_data = output.getvalue()
     return processed_data
-    
+
 # --- Interface Streamlit ---
 st.set_page_config(
     page_title="Calculadora de DGM",
@@ -189,14 +197,17 @@ st.markdown("Preencha os campos abaixo para calcular a DGM de mamografia.")
 if 'resultados_dgm' not in st.session_state:
     st.session_state.resultados_dgm = pd.DataFrame(columns=[
         "Data/Hora", "Idade", "Espessura (cm)", "Alvo/Filtro", "Kv", "mAs",
-        "Glandularidade (%)", "Valor s", "CSR", "Fator g", "Fator C", "Ki", "DGM (mGy)"
+        "Glandularidade (%)", "Grupo Glandularidade", "Valor s", "CSR", "Fator g", "Fator C", "Ki", "DGM (mGy)"
     ])
 
 # Sidebar para inputs
 with st.sidebar:
     st.header("Dados de Entrada")
     idade = st.number_input('Idade:', min_value=1, max_value=120, value=45, help="Idade da paciente (usado para glandularidade automática)")
-    espessura_mama = st.selectbox('Espessura da Mama (cm):', options=[2, 3, 4, 4.5, 5, 6, 7, 8, 9, 10, 11], index=5)
+    
+    # MUDAÇA AQUI: De selectbox para number_input
+    espessura_mama = st.number_input('Espessura da Mama (cm):', min_value=1.0, max_value=20.0, value=6.0, step=0.1, help="Espessura da mama comprimida em centímetros")
+    
     alvo_filtro = st.selectbox('Alvo/Filtro:', options=list(alvo_filtro_options.keys()))
     kv = st.number_input('Kv:', min_value=1.0, max_value=50.0, value=28.0, step=0.1)
     mas = st.number_input('mAs:', min_value=0.1, max_value=1000.0, value=50.0, step=0.1)
@@ -248,7 +259,8 @@ if st.button("Calcular DGM"):
             csr_val = csr
 
     with col4:
-        fator_g = calcular_fator_g(csr, espessura_mama)
+        # Fator g agora usa a nova lógica
+        fator_g = calcular_fator_g(csr_val, espessura_mama) # Passa csr_val aqui
         if isinstance(fator_g, str):
             st.error(f"Erro no cálculo do Fator g: {fator_g}")
             fator_g_val = "Erro"
@@ -258,15 +270,29 @@ if st.button("Calcular DGM"):
 
     # --- Cálculo e Exibição de Fator C e Ki ---
     col5, col6 = st.columns(2)
+    
+    # Adicionando o cálculo do grupo da glandularidade aqui para ser salvo
+    grupo_glandularidade_val = "Não calculado"
+    if isinstance(glandularidade, (int, float)):
+        if glandularidade <= 25:
+            grupo_glandularidade_val = 1
+        elif glandularidade <= 50:
+            grupo_glandularidade_val = 2
+        elif glandularidade <= 75:
+            grupo_glandularidade_val = 3
+        else:
+            grupo_glandularidade_val = 4
+
     with col5:
         fator_c = "Não calculado"
         fator_c_val = "Erro"
         if isinstance(csr, (int, float)) and isinstance(glandularidade, (int, float)):
-            csr_possiveis = [0.34,0.35,0.36, 0.37, 0.38, 0.39, 0.40, 0.41, 0.42, 0.43, 0.44, 0.45, 0.46, 0.47, 0.48, 0.50]
+            # Garante que csr_para_c esteja dentro das chaves de 'formulas'
+            csr_possiveis = list(formulas.keys()) # Pega as chaves do dicionário 'formulas'
             csr_para_c = min(csr_possiveis, key=lambda x: abs(x - csr))
 
-            if csr_para_c == 0.49: # Tratamento para 0.49
-                csr_para_c = 0.50 # Força o uso de 0.50 como fallback
+            # if csr_para_c == 0.49: # Tratamento para 0.49 - esta lógica deve ser revisada se 0.49 não existir
+            #     csr_para_c = 0.50 # Força o uso de 0.50 como fallback
 
             fator_c_calc = calcular_fator_c(csr_para_c, espessura_mama, glandularidade)
 
@@ -308,6 +334,7 @@ if st.button("Calcular DGM"):
             "Kv": kv,
             "mAs": mas,
             "Glandularidade (%)": glandularidade,
+            "Grupo Glandularidade": grupo_glandularidade_val,
             "Valor s": s_val,
             "CSR": csr_val,
             "Fator g": fator_g_val,
@@ -335,7 +362,7 @@ if not st.session_state.resultados_dgm.empty:
     if st.button("Limpar Histórico"):
         st.session_state.resultados_dgm = pd.DataFrame(columns=[
             "Data/Hora", "Idade", "Espessura (cm)", "Alvo/Filtro", "Kv", "mAs",
-            "Glandularidade (%)", "Valor s", "CSR", "Fator g", "Fator C", "Ki", "DGM (mGy)"
+            "Glandularidade (%)", "Grupo Glandularidade", "Valor s", "CSR", "Fator g", "Fator C", "Ki", "DGM (mGy)"
         ])
         st.experimental_rerun()
 else:
