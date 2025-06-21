@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import io
+from sympy import symbols, diff, sqrt # Importa SymPy para derivadas
 
 # Define as opções para o alvo/filtro
 alvo_filtro_options = {
@@ -16,22 +17,18 @@ alvo_filtro_options = {
 
 # Dicionário de fórmulas para CSR
 formulas_csr = {
-    'Mo/Mo': 0.01 * 0 + 0.08, # Valor inicial, será substituído
-    'Mo/Rh': 0.0067 * 0 + 0.2333,
-    'Rh/Rh': 0.0167 * 0 - 0.0367,
-    'W/Rh': 0.0067 * 0 + 0.3533
+    'Mo/Mo': 0.01,
+    'Mo/Rh': 0.0067,
+    'Rh/Rh': 0.0167,
+    'W/Rh': 0.0067
+}
+offsets_csr = {
+    'Mo/Mo': 0.08,
+    'Mo/Rh': 0.2333,
+    'Rh/Rh': -0.0367,
+    'W/Rh': 0.3533
 }
 
-# Dicionário de g_values (Fator G) - Antigo, mantido para evitar NameError se houver outras refs
-g_values_old = {
-    0.30: [0.390, 0.274, 0.207, 0.183, 0.164, 0.135, 0.114, 0.098, 0.0859, 0.0763, 0.0687],
-    0.35: [0.433, 0.309, 0.235, 0.208, 0.187, 0.154, 0.130, 0.112, 0.0981, 0.0873, 0.0783],
-    0.40: [0.473, 0.342, 0.261, 0.232, 0.209, 0.172, 0.145, 0.126, 0.1106, 0.0986, 0.0887],
-    0.45: [0.509, 0.374, 0.289, 0.258, 0.232, 0.192, 0.163, 0.140, 0.1233, 0.1096, 0.0988],
-    0.50: [0.543, 0.406, 0.318, 0.285, 0.258, 0.214, 0.177, 0.154, 0.1357, 0.1207, 0.1088],
-    0.55: [0.573, 0.437, 0.346, 0.311, 0.287, 0.236, 0.202, 0.175, 0.1543, 0.1375, 0.1240],
-    0.60: [0.587, 0.466, 0.374, 0.339, 0.310, 0.261, 0.224, 0.195, 0.1723, 0.1540, 0.1385],
-}
 
 # Tabela Ki
 tabela_ki_global = {
@@ -61,60 +58,147 @@ formulas_fator_c = {
     0.50: {1: lambda e: (0.0004 * e**3) - (0.0105 * e**2) + (0.093 * e) + 1.077, 2: lambda e: 0.0008 * e**3 - 0.0177 * e**2 + 0.1349 * e**2 + 0.853, 3: lambda e: 0.0004 * e**3 - (0.0105 * e**2) + (0.093 * e) + 1.077, 4: lambda e: -0.0004 * e**3 + 0.0093 * e**2 - 0.0726 * e + 1.03},
 }
 
-# --- FIM DICIONÁRIOS GLOBAIS ---
+# Incertezas das entradas (em porcentagem do valor)
+INCERTEZA_KV_PERCENTUAL = 0.01  # ±1%
+INCERTEZA_MAS_PERCENTUAL = 0.05 # ±5%
+INCERTEZA_ESPESSURA_PERCENTUAL = 0.05 # ±5% (considerando 1 a 2mm como 2% a 5% de 2 a 11cm)
+
+# --- FIM DICIONÁRIOS GLOBAIS E CONSTANTES DE INCERTEZA ---
+
+
+# --- FUNÇÃO GENÉRICA DE PROPAGAÇÃO DE INCERTEZAS (USANDO SYMPY) ---
+@st.cache_data
+def calcular_incerteza_propagada(func_expr, value_dict, uncertainty_dict):
+    """
+    Calcula a incerteza propagada usando a fórmula da raiz quadrada da soma dos quadrados.
+    Args:
+        func_expr (sympy.Expr): A expressão simbólica da função.
+        value_dict (dict): Dicionário de {símbolo: valor numérico}.
+        uncertainty_dict (dict): Dicionário de {símbolo: incerteza numérica}.
+    Returns:
+        float: A incerteza propagada.
+    """
+    sum_of_squares = 0
+    for var in func_expr.free_symbols:
+        if var in uncertainty_dict and var in value_dict:
+            # Calcula a derivada parcial
+            partial_derivative = diff(func_expr, var)
+            # Avalia a derivada parcial nos valores numéricos
+            partial_derivative_val = partial_derivative.subs(value_dict)
+            
+            # Adiciona o termo ao somatório
+            sum_of_squares += (partial_derivative_val * uncertainty_dict[var])**2
+    
+    return float(sqrt(sum_of_squares))
+
+# --- FIM FUNÇÃO GENÉRICA DE PROPAGAÇÃO DE INCERTEZAS ---
 
 
 # Fórmulas para CSR (função)
-def calcular_csr(kv, alvo_filtro):
+def calcular_csr(kv_val, alvo_filtro, d_kv):
     try:
-        kv = float(kv)
-        formulas_csr_local = {
-            'Mo/Mo': 0.01 * kv + 0.08,
-            'Mo/Rh': 0.0067 * kv + 0.2333,
-            'Rh/Rh': 0.0167 * kv - 0.0367,
-            'W/Rh': 0.0067 * kv + 0.3533
-        }
-        return round(formulas_csr_local.get(alvo_filtro, "Alvo/filtro inválido"), 2)
+        kv_sym = symbols('kv')
+        # A fórmula do CSR depende do alvo/filtro.
+        # Definimos as constantes fora da função.
+        const_a = formulas_csr.get(alvo_filtro)
+        const_k = offsets_csr.get(alvo_filtro)
+        
+        if const_a is None or const_k is None:
+            return "Alvo/filtro inválido", 0.0
+
+        # Expressão simbólica para o CSR
+        csr_expr = const_a * kv_sym + const_k
+        
+        # Valor numérico do CSR
+        csr_val = round(csr_expr.subs(kv_sym, kv_val), 2)
+
+        # Calcula incerteza do CSR
+        uncertainties = {kv_sym: d_kv}
+        values = {kv_sym: kv_val}
+        incerteza_csr = calcular_incerteza_propagada(csr_expr, values, uncertainties)
+
+        return csr_val, round(incerteza_csr, 4)
     except ValueError:
-        return "Entrada inválida para Kv"
+        return "Entrada inválida para Kv", 0.0
 
 # FUNÇÃO calcular_fator_g
-def calcular_fator_g(csr, espessura):
+def calcular_fator_g(csr_val, espessura_val, d_espessura, d_a0, d_a1, d_a2, d_a3):
     """
-    Calcula o fator g usando a equação polinomial G = a0 + a1*x + a2*x^2 + a3*x^3,
-    onde x é a espessura da mama em cm e a0, a1, a2, a3 dependem do CSR.
+    Calcula o fator g e sua incerteza.
     """
     try:
-        csr = float(csr)
-        espessura = float(espessura) 
+        # Define símbolos para SymPy
+        csr_sym, espessura_sym, a0_sym, a1_sym, a2_sym, a3_sym = symbols('csr espessura a0 a1 a2 a3')
 
         a0, a1, a2, a3 = 0, 0, 0, 0
-
-        if csr <= 0.30:
-            a0, a1, a2, a3 = 0.6862414, -0.1903851, 0.0211549, -0.0008170
-        elif csr <= 0.35:
-            a0, a1, a2, a3 = 0.7520924, -0.2040045, 0.0223514, -0.0008553
-        elif csr <= 0.40:
-            a0, a1, a2, a3 = 0.8135159, -0.2167391, 0.0234949, -0.0008925
-        elif csr <= 0.45:
-            a0, a1, a2, a3 = 0.8587792, -0.2213542, 0.0235061, -0.0008817
-        elif csr <= 0.50:
-            a0, a1, a2, a3 = 0.8926865, -0.2192870, 0.0224164, -0.0008171
-        elif csr <= 0.55:
-            a0, a1, a2, a3 = 0.9237367, -0.2189931, 0.0221241, -0.0008050
-        elif csr <= 0.60:
-            a0, a1, a2, a3 = 0.9131422, -0.1996713, 0.0190965, -0.0006696
+        if csr_val <= 0.30:
+            a0, d_a0_val = 0.6862414, d_a0
+            a1, d_a1_val = -0.1903851, d_a1
+            a2, d_a2_val = 0.0211549, d_a2
+            a3, d_a3_val = -0.0008170, d_a3
+        elif csr_val <= 0.35:
+            a0, d_a0_val = 0.7520924, d_a0
+            a1, d_a1_val = -0.2040045, d_a1
+            a2, d_a2_val = 0.0223514, d_a2
+            a3, d_a3_val = -0.0008553, d_a3
+        elif csr_val <= 0.40:
+            a0, d_a0_val = 0.8135159, d_a0
+            a1, d_a1_val = -0.2167391, d_a1
+            a2, d_a2_val = 0.0234949, d_a2
+            a3, d_a3_val = -0.0008925, d_a3
+        elif csr_val <= 0.45:
+            a0, d_a0_val = 0.8587792, d_a0
+            a1, d_a1_val = -0.2213542, d_a1
+            a2, d_a2_val = 0.0235061, d_a2
+            a3, d_a3_val = -0.0008817, d_a3
+        elif csr_val <= 0.50:
+            a0, d_a0_val = 0.8926865, d_a0
+            a1, d_a1_val = -0.2192870, d_a1
+            a2, d_a2_val = 0.0224164, d_a2
+            a3, d_a3_val = -0.0008171, d_a3
+        elif csr_val <= 0.55:
+            a0, d_a0_val = 0.9237367, d_a0
+            a1, d_a1_val = -0.2189931, d_a1
+            a2, d_a2_val = 0.0221241, d_a2
+            a3, d_a3_val = -0.0008050, d_a3
+        elif csr_val <= 0.60:
+            a0, d_a0_val = 0.9131422, d_a0
+            a1, d_a1_val = -0.1996713, d_a1
+            a2, d_a2_val = 0.0190965, d_a2
+            a3, d_a3_val = -0.0006696, d_a3
         else:
-            return "CSR fora do intervalo suportado para cálculo do fator g."
+            return "CSR fora do intervalo suportado para cálculo do fator g.", 0.0
 
-        fator_g_calculado = (a0 + (a1 * espessura) + (a2 * (espessura**2)) + (a3 * (espessura**3)))
+        # Expressão simbólica para o Fator g
+        fator_g_expr = a0_sym + a1_sym * espessura_sym + a2_sym * espessura_sym**2 + a3_sym * espessura_sym**3
         
-        return max(0, round(fator_g_calculado, 4))
+        # Valor numérico do Fator g
+        fator_g_calculado = (a0 + (a1 * espessura_val) + (a2 * (espessura_val**2)) + (a3 * (espessura_val**3)))
+        fator_g_val = max(0, round(fator_g_calculado, 4))
+
+        # Calcula incerteza do Fator g
+        uncertainties = {
+            espessura_sym: d_espessura,
+            a0_sym: d_a0_val,
+            a1_sym: d_a1_val,
+            a2_sym: d_a2_val,
+            a3_sym: d_a3_val
+        }
+        values = {
+            espessura_sym: espessura_val,
+            a0_sym: a0,
+            a1_sym: a1,
+            a2_sym: a2,
+            a3_sym: a3
+        }
+        incerteza_fator_g = calcular_incerteza_propagada(fator_g_expr, values, uncertainties)
+
+        return fator_g_val, round(incerteza_fator_g, 4)
     
     except ValueError:
-        return "Entrada inválida para cálculo do fator g"
+        return "Entrada inválida para cálculo do fator g", 0.0
 
-# FUNÇÃO DE GLANDULARIDADE
+# FUNÇÃO DE GLANDULARIDADE (incerteza não propagada aqui, assumida como exata)
 def calcular_glandularidade(idade, espessura_mama_cm):
     """
     Calcula a glandularidade usando a fórmula G = at^3 + bt^2 + ct + k.
@@ -151,7 +235,7 @@ def calcular_glandularidade(idade, espessura_mama_cm):
     
     return max(0, round(G, 2))
 
-# Função para calcular o fator C
+# Função para calcular o fator C (incerteza não propagada aqui, assumida como exata)
 def calcular_fator_c(csr, espessura, glandularidade):
     try:
         espessura = float(espessura)
@@ -178,7 +262,7 @@ def calcular_fator_c(csr, espessura, glandularidade):
     except (ValueError, TypeError):
         return "Entrada inválida"
 
-# Função para calcular o Ki
+# Função para calcular o Ki (incerteza não propagada aqui, assumida como exata)
 def calcular_ki(kv, alvo_filtro, mas, espessura_mama):
     x = tabela_ki_global.get((alvo_filtro, int(kv)), 0)
     
@@ -191,17 +275,42 @@ def calcular_ki(kv, alvo_filtro, mas, espessura_mama):
 
     return round(((x * mas)*2500) / divisor, 2)
 
-def calcular_dgm(ki, s, fator_g, fator_c):
-    try:
-        dgm = ki * s * fator_g * fator_c
-        return round(dgm, 2)
-    except (ValueError, TypeError):
-        return "Entrada inválida para o cálculo do DGM"
 
-# --- Funções para Exportação (AGORA PARA CSV) ---
+# --- FUNÇÃO calcular_dgm (AGORA RETORNA VALOR E INCERTEZA) ---
+def calcular_dgm(ki, s, fator_g, fator_c, incerteza_ki, incerteza_s, incerteza_fator_g, incerteza_fator_c):
+    try:
+        # Define símbolos para SymPy
+        ki_sym, s_sym, fg_sym, fc_sym = symbols('ki s fg fc')
+        
+        # Expressão simbólica para a DGM
+        dgm_expr = ki_sym * s_sym * fg_sym * fc_sym
+        
+        # Valor numérico da DGM
+        dgm = ki * s * fator_g * fator_c
+        
+        # Calcula incerteza da DGM
+        uncertainties = {
+            ki_sym: incerteza_ki,
+            s_sym: incerteza_s,
+            fg_sym: incerteza_fator_g,
+            fc_sym: incerteza_fator_c
+        }
+        values = {
+            ki_sym: ki,
+            s_sym: s,
+            fg_sym: fator_g,
+            fc_sym: fator_c
+        }
+        incerteza_dgm = calcular_incerteza_propagada(dgm_expr, values, uncertainties)
+
+        return round(dgm, 2), round(incerteza_dgm, 4)
+    except (ValueError, TypeError):
+        return "Entrada inválida para o cálculo do DGM", 0.0
+# --- FIM FUNÇÃO calcular_dgm ---
+
+# Funções para Exportação (CSV)
 @st.cache_data
 def to_csv(df):
-    # Converte o DataFrame para CSV como uma string
     return df.to_csv(index=False).encode('utf-8')
 
 # --- Interface Streamlit ---
@@ -218,7 +327,8 @@ st.markdown("Preencha os campos abaixo para calcular a DGM de mamografia.")
 if 'resultados_dgm' not in st.session_state:
     st.session_state.resultados_dgm = pd.DataFrame(columns=[
         "Data/Hora", "Idade", "Espessura (cm)", "Alvo/Filtro", "Kv", "mAs",
-        "Glandularidade (%)", "Grupo Glandularidade", "Valor s", "CSR", "Fator g", "Fator C", "Ki", "DGM (mGy)"
+        "Glandularidade (%)", "Grupo Glandularidade", "Valor s", "CSR", "Fator g", "Fator C", "Ki",
+        "DGM (mGy)", "Incerteza DGM (mGy)" # Nova coluna para incerteza
     ])
 
 # Sidebar para inputs
@@ -235,10 +345,29 @@ with st.sidebar:
     if sabe_glandularidade:
         glandularidade_input = st.number_input('Glandularidade (%):', min_value=0.0, max_value=100.0, value=50.0, step=0.1)
 
-# Botão de Cálculo
+# Incertezas das constantes do Fator G (da0, da1, da2, da3)
+# Estes valores são fixos, então definidos aqui no escopo principal.
+# IMPORTANTE: Você precisa fornecer os valores numéricos para estas incertezas!
+# Se não fornecidos, serão 0.
+INCERTEZA_A0 = 0.0215771 # Exemplo para csr <= 0.30
+INCERTEZA_A1 = 0.0122059
+INCERTEZA_A2 = 0.0020598
+INCERTEZA_A3 = 0.0001055
+
+# Se você quiser que essas incertezas mudem com o CSR, precisaremos ajustar a lógica.
+# Por enquanto, estou usando os valores do primeiro intervalo (CSR <= 0.30).
+# Se eles mudam por faixa de CSR, precisaremos de um dicionário como os de a0,a1,a2,a3
+# para suas incertezas da0,da1,da2,da3. Para iniciar, usarei esses como exemplo.
+
+
 st.markdown("---")
 if st.button("Calcular DGM"):
     st.subheader("Resultados do Cálculo Atual:")
+
+    # --- Cálculo de Incertezas das Entradas ---
+    d_kv = kv * INCERTEZA_KV_PERCENTUAL
+    d_mas = mas * INCERTEZA_MAS_PERCENTUAL
+    d_espessura = espessura_mama * INCERTEZA_ESPESSURA_PERCENTUAL
 
     # --- Cálculo e Exibição de Glandularidade ---
     col1, col2 = st.columns(2)
@@ -259,6 +388,8 @@ if st.button("Calcular DGM"):
     # --- Cálculo e Exibição de s ---
     with col2:
         s = alvo_filtro_options.get(alvo_filtro, "Inválido")
+        # Incerteza de 's' (considerada zero se for uma constante do equipamento)
+        incerteza_s = 0.0
         if isinstance(s, str):
             st.error(f"Erro no valor de s: {s}")
             s_val = "Erro"
@@ -269,21 +400,26 @@ if st.button("Calcular DGM"):
     # --- Cálculo e Exibição de CSR e Fator g ---
     col3, col4 = st.columns(2)
     with col3:
-        csr = calcular_csr(kv, alvo_filtro)
+        # calcular_csr agora retorna (valor, incerteza)
+        csr, incerteza_csr = calcular_csr(kv, alvo_filtro, d_kv)
         if isinstance(csr, str):
             st.error(f"Erro no cálculo de CSR: {csr}")
             csr_val = "Erro"
         else:
-            st.info(f"**Valor de CSR:** {csr}")
+            st.info(f"**Valor de CSR:** {csr} ± {incerteza_csr}") # Exibe incerteza
             csr_val = csr
 
     with col4:
-        fator_g = calcular_fator_g(csr_val, espessura_mama)
+        # Passa as incertezas das constantes para calcular_fator_g
+        # Estes valores de incerteza (INCERTEZA_A0, etc.) precisam ser ajustados
+        # se eles mudam com o CSR. Por simplicidade, usando os fixos por hora.
+        fator_g, incerteza_fator_g = calcular_fator_g(csr_val, espessura_mama, d_espessura,
+                                                      INCERTEZA_A0, INCERTEZA_A1, INCERTEZA_A2, INCERTEZA_A3)
         if isinstance(fator_g, str):
             st.error(f"Erro no cálculo do Fator g: {fator_g}")
             fator_g_val = "Erro"
         else:
-            st.info(f"**Valor do Fator g:** {fator_g}")
+            st.info(f"**Valor do Fator g:** {fator_g} ± {incerteza_fator_g}") # Exibe incerteza
             fator_g_val = fator_g
 
     # --- Cálculo e Exibição de Fator C e Ki ---
@@ -303,6 +439,8 @@ if st.button("Calcular DGM"):
     with col5:
         fator_c = "Não calculado"
         fator_c_val = "Erro"
+        # Incerteza do Fator C (assumida como zero)
+        incerteza_fator_c = 0.0
         if isinstance(csr_val, (int, float)) and isinstance(glandularidade, (int, float)):
             csr_possiveis_fator_c = list(formulas_fator_c.keys()) 
             csr_para_c = min(csr_possiveis_fator_c, key=lambda x: abs(x - csr_val))
@@ -313,29 +451,45 @@ if st.button("Calcular DGM"):
                 st.error(f"Erro no cálculo do Fator C: {fator_c_calc}")
             else:
                 fator_c = fator_c_calc
-                st.info(f"**Valor do Fator C:** {fator_c}")
+                st.info(f"**Valor do Fator C:** {fator_c}") # Fator C não tem incerteza calculada
                 fator_c_val = fator_c
         else:
             st.warning("Fator C não calculado devido a entradas inválidas de CSR ou Glandularidade.")
 
     with col6:
         ki = calcular_ki(kv, alvo_filtro, mas, espessura_mama)
+        # Incerteza de Ki (assumida como zero)
+        incerteza_ki = 0.0
         if isinstance(ki, str):
             st.error(f"Erro no cálculo de Ki: {ki}")
             ki_val = "Erro"
         else:
-            st.info(f"**Valor de Ki:** {ki}")
+            st.info(f"**Valor de Ki:** {ki}") # Ki não tem incerteza calculada
             ki_val = ki
 
-    # --- Cálculo e Exibição final da DGM ---
+    # --- Cálculo e Exibição final da DGM e sua Incerteza ---
     st.markdown("---")
     dgm_val = "Erro"
-    if all(isinstance(val, (int, float)) for val in [ki_val, s_val, fator_g_val, fator_c_val]):
-        dgm = calcular_dgm(ki_val, s_val, fator_g_val, fator_c_val)
-        st.success(f"**Valor da DGM:** {dgm} mGy")
-        dgm_val = dgm
+    incerteza_dgm_val = "Erro" # Inicializa incerteza DGM
+    
+    # Verifica se todos os valores e incertezas são válidos antes de calcular DGM e sua incerteza
+    if all(isinstance(val, (int, float)) for val in [ki_val, s_val, fator_g_val, fator_c_val, 
+                                                     incerteza_ki, incerteza_s, incerteza_fator_g, incerteza_fator_c]):
+        
+        # calcular_dgm agora retorna (valor, incerteza)
+        dgm, incerteza_dgm = calcular_dgm(ki_val, s_val, fator_g_val, fator_c_val, 
+                                        incerteza_ki, incerteza_s, incerteza_fator_g, incerteza_fator_c)
+        
+        if isinstance(dgm, str):
+            st.error(f"Não foi possível calcular a DGM: {dgm}")
+            dgm_val = "Erro"
+            incerteza_dgm_val = "Erro"
+        else:
+            st.success(f"**Valor da DGM:** {dgm} mGy ± {incerteza_dgm} mGy") # Exibe incerteza final
+            dgm_val = dgm
+            incerteza_dgm_val = incerteza_dgm
     else:
-        st.error("Não foi possível calcular a DGM devido a erros nos valores anteriores.")
+        st.error("Não foi possível calcular a DGM devido a erros nos valores anteriores ou incertezas inválidas.")
 
     # Armazenar resultados na sessão
     if dgm_val != "Erro":
@@ -353,7 +507,8 @@ if st.button("Calcular DGM"):
             "Fator g": fator_g_val,
             "Fator C": fator_c_val,
             "Ki": ki_val,
-            "DGM (mGy)": dgm_val
+            "DGM (mGy)": dgm_val,
+            "Incerteza DGM (mGy)": incerteza_dgm_val # Adicionado ao histórico
         }
         st.session_state.resultados_dgm = pd.concat([st.session_state.resultados_dgm, pd.DataFrame([nova_linha])], ignore_index=True)
 
@@ -364,19 +519,19 @@ st.subheader("Histórico de Cálculos:")
 if not st.session_state.resultados_dgm.empty:
     st.dataframe(st.session_state.resultados_dgm, use_container_width=True)
     
-    # MUDAÇA AQUI: de st.download_button para baixar CSV
     csv_data = to_csv(st.session_state.resultados_dgm)
     st.download_button(
-        label="📥 Baixar Resultados como CSV", # Texto do botão
+        label="📥 Baixar Resultados como CSV",
         data=csv_data,
-        file_name=f"resultados_dgm_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv", # Nome do arquivo
-        mime="text/csv", # Tipo MIME para CSV
+        file_name=f"resultados_dgm_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+        mime="text/csv",
     )
     
     if st.button("Limpar Histórico"):
         st.session_state.resultados_dgm = pd.DataFrame(columns=[
             "Data/Hora", "Idade", "Espessura (cm)", "Alvo/Filtro", "Kv", "mAs",
-            "Glandularidade (%)", "Grupo Glandularidade", "Valor s", "CSR", "Fator g", "Fator C", "Ki", "DGM (mGy)"
+            "Glandularidade (%)", "Grupo Glandularidade", "Valor s", "CSR", "Fator g", "Fator C", "Ki",
+            "DGM (mGy)", "Incerteza DGM (mGy)" # Nova coluna para incerteza
         ])
         st.experimental_rerun()
 else:
