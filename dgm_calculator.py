@@ -35,8 +35,6 @@ tabela_ki_global = {
 INCERTEZA_KI_X_PERCENTUAL = 0.02 # ±2%
 
 # Dicionário de fórmulas para Fator C e suas incertezas nas constantes
-# Cada lambda representa a função C(e) para um grupo e CSR
-# Para cada constante (0.0004, -0.0105, 0.093, 0.9449, etc.), a incerteza será 5% do seu valor.
 formulas_fator_c_details = {
     0.34: {
         1: {'func': lambda e, c0, c1, c2, c3: (c0 * e**3) + (c1 * e**2) + (c2 * e) + c3, 'consts': {'c0': 0.0004, 'c1': -0.0105, 'c2': 0.093, 'c3': 0.9449}},
@@ -124,17 +122,18 @@ formulas_fator_c_details = {
     },
     0.48: {
         1: {'func': lambda e, c0, c1, c2, c3: (c0 * e**3) + (c1 * e**2) + (c2 * e) + c3, 'consts': {'c0': 0.0008, 'c1': -0.0177, 'c2': 0.1349, 'c3': 0.853}},
-        2: {'func': lambda e, c0, c1, c2, c3: (c0 * e**3) + (c1 * e**2) + (c2 * e) + c3, 'consts': {'c0': 0.0008, 'c1': -0.0177, 'c2': 0.1349, 'c3': 0.853}}, # ATENÇÃO: Constantes duplicadas intencionalmente?
+        2: {'func': lambda e, c0, c1, c2, c3: (c0 * e**3) + (c1 * e**2) + (c2 * e) + c3, 'consts': {'c0': 0.0008, 'c1': -0.0177, 'c2': 0.1349, 'c3': 0.853}},
         3: {'func': lambda e, c0, c1, c2, c3: (c0 * e**3) + (c1 * e**2) + (c2 * e) + c3, 'consts': {'c0': 0.0004, 'c1': -0.0105, 'c2': 0.093, 'c3': 1.077}},
         4: {'func': lambda e, c0, c1, c2, c3: (c0 * e**3) + (c1 * e**2) + (c2 * e) + c3, 'consts': {'c0': -0.0004, 'c1': 0.0093, 'c2': -0.0726, 'c3': 1.03}},
     },
     0.50: {
         1: {'func': lambda e, c0, c1, c2, c3: (c0 * e**3) + (c1 * e**2) + (c2 * e) + c3, 'consts': {'c0': 0.0004, 'c1': -0.0105, 'c2': 0.093, 'c3': 1.077}},
-        2: {'func': lambda e, c0, c1, c2, c3: (c0 * e**3) + (c1 * e**2) + (c2 * e) + c3, 'consts': {'c0': 0.0008, 'c1': -0.0177, 'c2': 0.1349, 'c3': 0.853}}, # ATENÇÃO: Constantes duplicadas intencionalmente?
+        2: {'func': lambda e, c0, c1, c2, c3: (c0 * e**3) + (c1 * e**2) + (c2 * e) + c3, 'consts': {'c0': 0.0008, 'c1': -0.0177, 'c2': 0.1349, 'c3': 0.853}},
         3: {'func': lambda e, c0, c1, c2, c3: (c0 * e**3) + (c1 * e**2) + (c2 * e) + c3, 'consts': {'c0': 0.0004, 'c1': -0.0105, 'c2': 0.093, 'c3': 1.077}},
         4: {'func': lambda e, c0, c1, c2, c3: (c0 * e**3) + (c1 * e**2) + (c2 * e) + c3, 'consts': {'c0': -0.0004, 'c1': 0.0093, 'c2': -0.0726, 'c3': 1.03}},
     },
 }
+
 
 INCERTEZA_FATOR_C_CONST_PERCENTUAL = 0.05 # ±5% para cada constante do Fator C
 
@@ -146,11 +145,10 @@ INCERTEZA_ESPESSURA_PERCENTUAL = 0.05 # ±5%
 # --- FIM DICIONÁRIOS GLOBAIS E CONSTANTES DE INCERTEZA ---
 
 # --- FUNÇÃO GENÉRICA DE PROPAGAÇÃO DE INCERTEZAS (MANUAL) ---
-def propagate_uncertainty(value_func, uncertainty_terms):
+def propagate_uncertainty(uncertainty_terms):
     """
     Calcula a incerteza propagada usando a fórmula da raiz quadrada da soma dos quadrados (RSS).
     Args:
-        value_func (callable): Uma função lambda que encapsula o cálculo do valor.
         uncertainty_terms (list of tuples): Lista de (derivada_parcial, incerteza_da_entrada).
             A derivada parcial deve ser o valor numérico avaliado.
     Returns:
@@ -168,8 +166,12 @@ def propagate_uncertainty(value_func, uncertainty_terms):
 # Fórmulas para CSR (função)
 def calcular_csr(kv_val, alvo_filtro, d_kv_abs):
     try:
-        const_a = csr_coeffs.get(alvo_filtro)['a']
-        const_b = csr_coeffs.get(alvo_filtro)['b']
+        data = csr_coeffs.get(alvo_filtro)
+        if not data:
+            return "Alvo/filtro inválido", 0.0
+
+        const_a = data['a']
+        const_b = data['b']
         
         csr_val = round(const_a * kv_val + const_b, 2)
 
@@ -177,7 +179,6 @@ def calcular_csr(kv_val, alvo_filtro, d_kv_abs):
         partial_deriv_kv = const_a
         
         incerteza_csr = propagate_uncertainty(
-            lambda: csr_val,
             [(partial_deriv_kv, d_kv_abs)]
         )
 
@@ -192,9 +193,6 @@ def calcular_fator_g(csr_val, espessura_val, d_espessura_abs):
     Calcula o fator g e sua incerteza.
     """
     try:
-        a0, a1, a2, a3 = 0, 0, 0, 0
-        da0, da1, da2, da3 = 0, 0, 0, 0 # Incertezas das constantes
-
         # Encontra a faixa de CSR mais próxima para obter as constantes
         csr_keys = list(FATOR_G_CONSTANTS_UNCERTAINTIES.keys())
         csr_aproximado_key = min(csr_keys, key=lambda x: abs(x - csr_val))
@@ -202,6 +200,8 @@ def calcular_fator_g(csr_val, espessura_val, d_espessura_abs):
         constants_data = FATOR_G_CONSTANTS_UNCERTAINTIES.get(csr_aproximado_key)
 
         if not constants_data:
+            # Isso pode acontecer se csr_val estiver muito fora das chaves,
+            # ou se FATOR_G_CONSTANTS_UNCERTAINTIES estiver vazio/malformado.
             return "CSR fora do intervalo suportado para cálculo do fator g.", 0.0
 
         a0, da0 = constants_data['a0'], constants_data['da0']
@@ -227,7 +227,6 @@ def calcular_fator_g(csr_val, espessura_val, d_espessura_abs):
         partial_deriv_a3 = espessura_val**3
 
         incerteza_fator_g = propagate_uncertainty(
-            lambda: fator_g_val, # O valor da função
             [
                 (partial_deriv_espessura, d_espessura_abs),
                 (partial_deriv_a0, da0),
@@ -239,7 +238,8 @@ def calcular_fator_g(csr_val, espessura_val, d_espessura_abs):
 
         return fator_g_val, round(incerteza_fator_g, 4)
     
-    except Exception:
+    except Exception as e:
+        print(f"Erro detalhado no Fator g: {e}") # Esta linha imprimirá a causa do erro nos logs
         return "Erro Fator g", 0.0
 
 # FUNÇÃO DE GLANDULARIDADE (incerteza não propagada aqui, assumida como exata)
@@ -320,7 +320,6 @@ def calcular_fator_c(csr, espessura, glandularidade, d_espessura_abs):
         partial_deriv_c3 = 1
 
         incerteza_fator_c = propagate_uncertainty(
-            lambda: fator_c_val,
             [
                 (partial_deriv_e, d_espessura_abs),
                 (partial_deriv_c0, dc0),
@@ -331,7 +330,8 @@ def calcular_fator_c(csr, espessura, glandularidade, d_espessura_abs):
         )
         return fator_c_val, round(incerteza_fator_c, 4)
 
-    except Exception: # Captura qualquer erro
+    except Exception as e:
+        print(f"Erro detalhado no Fator C: {e}")
         return "Entrada inválida para Fator C", 0.0
 
 # Função para calcular o Ki
@@ -348,10 +348,10 @@ def calcular_ki(kv_val, alvo_filtro, mas_val, espessura_mama_val, d_mas_abs, d_e
 
         ki_val = round(((x_val * mas_val)*2500) / divisor_val, 2)
 
-        # Derivadas parciais de Ki = (x * mAs * 2500) / (63 - e)^2
-        # d_x é INCERTEZA_KI_X_PERCENTUAL * x_val (incerteza do valor 'x' da tabela)
+        # Incerteza do valor 'x' da tabela Ki
         d_x_abs = x_val * INCERTEZA_KI_X_PERCENTUAL
 
+        # Derivadas parciais de Ki = (x * mAs * 2500) / (63 - e)^2
         # Derivada em relação a x: (mAs * 2500) / (63 - e)^2
         partial_deriv_x = (mas_val * 2500) / divisor_val
         # Derivada em relação a mAs: (x * 2500) / (63 - e)^2
@@ -360,7 +360,6 @@ def calcular_ki(kv_val, alvo_filtro, mas_val, espessura_mama_val, d_mas_abs, d_e
         partial_deriv_espessura = ((x_val * mas_val * 2500 * 2) / ((63 - espessura_mama_val)**3))
 
         incerteza_ki = propagate_uncertainty(
-            lambda: ki_val,
             [
                 (partial_deriv_x, d_x_abs),
                 (partial_deriv_mas, d_mas_abs),
@@ -369,7 +368,8 @@ def calcular_ki(kv_val, alvo_filtro, mas_val, espessura_mama_val, d_mas_abs, d_e
         )
         return ki_val, round(incerteza_ki, 4)
 
-    except Exception:
+    except Exception as e:
+        print(f"Erro detalhado no Ki: {e}")
         return "Erro Ki", 0.0
 
 
@@ -385,7 +385,6 @@ def calcular_dgm(ki_val, s_val, fator_g_val, fator_c_val, incerteza_ki, incertez
         partial_deriv_fc = ki_val * s_val * fator_g_val
 
         incerteza_dgm = propagate_uncertainty(
-            lambda: dgm,
             [
                 (partial_deriv_ki, incerteza_ki),
                 (partial_deriv_s, incerteza_s),
@@ -395,7 +394,8 @@ def calcular_dgm(ki_val, s_val, fator_g_val, fator_c_val, incerteza_ki, incertez
         )
 
         return round(dgm, 2), round(incerteza_dgm, 4)
-    except Exception:
+    except Exception as e:
+        print(f"Erro detalhado no DGM: {e}")
         return "Erro DGM", 0.0
 
 # Funções para Exportação (CSV)
