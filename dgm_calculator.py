@@ -67,7 +67,7 @@ FATOR_G_CONSTANTS_UNCERTAINTIES = {
 INCERTEZA_KV_PERCENTUAL = 0.01  # ±1%
 INCERTEZA_MAS_PERCENTUAL = 0.05 # ±5%
 INCERTEZA_ESPESSURA_PERCENTUAL = 0.05 # ±5% (considerando 1 a 2mm como 2% a 5% de 2 a 11cm)
-INCERTEZA_X_KI_PERCENTUAL = 0.02 # ±2% para os valores de 'x' na tabela Ki
+INCERTEZA_X_KI_PERCENTUAL = 0.01 # ±1% para os valores de 'x' na tabela Ki
 INCERTEZA_COEFS_FATOR_C_PERCENTUAL = 0.05 # ±5% para os coeficientes das fórmulas do Fator C
 
 # --- FIM DICIONÁRIOS GLOBAIS E CONSTANTES DE INCERTEZA ---
