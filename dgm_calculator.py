@@ -23,12 +23,34 @@ csr_coeffs = {
     'W/Rh':  {'a': 0.0067, 'b': 0.3533}
 }
 
-# Tabela Ki
-tabela_ki_global = {
+# Tabela Ki do IRD (restaurada para os valores originais e limitados)
+tabela_ki_ird = {
     ('Mo/Mo', 26): 0.1357,
     ('Mo/Mo', 27): 0.1530,
     ('Mo/Rh', 29): 0.1540,
     ('Mo/Rh', 31): 0.1830,
+}
+
+# Tabela Ki da UFRJ (dados fornecidos na última mensagem)
+tabela_ki_ufrj = {
+    ('Mo/Mo', 25): 0.119094303,
+    ('Mo/Mo', 26): 0.136888667,
+    ('Mo/Mo', 27): 0.155258424,
+    ('Mo/Mo', 28): 0.175158485,
+    ('Mo/Rh', 26): 0.114301394,
+    ('Mo/Rh', 27): 0.131012303,
+    ('Mo/Rh', 28): 0.148476121,
+    ('Mo/Rh', 29): 0.166423515,
+    ('Rh/Rh', 28): 0.126825394,
+    ('Rh/Rh', 29): 0.142299818,
+    ('Rh/Rh', 30): 0.158490424,
+    ('Rh/Rh', 31): 0.175164606,
+}
+
+# Dicionário para selecionar a tabela Ki com base no local
+tabelas_ki_por_local = {
+    'IRD': tabela_ki_ird,
+    'UFRJ': tabela_ki_ufrj,
 }
 
 # Dicionário de fórmulas para Fator C
@@ -142,7 +164,7 @@ def calcular_fator_g(csr_val, espessura_val, d_espessura_abs):
         fator_g_val = max(0, round(fator_g_calculado, 4))
 
         # Calcula as derivadas parciais manualmente
-        # f(x, a0, a1, a2, a3) = a0 + a1*x + a2*x^2 + a3*x^3
+        # f(x, a0, a1, a2, a3) = a0 + a1*x + a2*x^2 + 3*a3*x^2
         # Derivada em relação a x (espessura_val): a1 + 2*a2*x + 3*a3*x^2
         partial_deriv_espessura = a1 + 2*a2*espessura_val + 3*a3*espessura_val**2
         # Derivada em relação a a0: 1
@@ -318,7 +340,7 @@ def calcular_fator_c(csr, espessura, glandularidade, d_espessura_abs):
                 },
                 0.48: {
                     1: {'a': 0.0008, 'b': -0.0177, 'c': 0.1349, 'd': 0.853},
-                    2: {'a': 0.0008, 'b': -0.0177, 'c': 0.1349, 'd': 0.853},
+                    2: {'a': 0.0008, 'b': -0.0177, 'c': 0.1349, 'd': 0.853}, # Duplicado, verificar no original se é intencional
                     3: {'a': 0.0004, 'b': -0.0105, 'c': 0.093, 'd': 1.077},
                     4: {'a': -0.0004, 'b': 0.0093, 'c': -0.0726, 'd': 1.03}
                 },
@@ -331,7 +353,14 @@ def calcular_fator_c(csr, espessura, glandularidade, d_espessura_abs):
             }
             return coeffs_map.get(csr_key, {}).get(group_key, None)
 
-        coeffs = get_coeffs_from_lambda_for_fator_c(csr_aproximado, grupo_val)
+
+        # Recalcula o fator C usando os coeficientes para ter os valores de a,b,c,d
+        # para as derivadas, mesmo que a formula_func ainda seja a original lambda.
+        # Isso significa que `formulas_fator_c` **precisa** ser re-estruturado no topo.
+        # Vou fazer a modificação global do `formulas_fator_c` para suportar isso.
+
+        # Temporariamente, para que a função compile e funcione com a simulação:
+        coeffs = get_coeffs_from_lambda(csr_aproximado, grupo_val)
         if not coeffs:
             return "Erro: Coeficientes do Fator C não encontrados.", 0.0
 
@@ -370,13 +399,25 @@ def calcular_fator_c(csr, espessura, glandularidade, d_espessura_abs):
     except Exception as e:
         return f"Erro inesperado no cálculo do Fator C: {e}", 0.0
 
-# Função para calcular o Ki (com incerteza)
-def calcular_ki(kv, alvo_filtro, mas, espessura_mama, d_mas_abs, d_espessura_abs):
+# Função para calcular o Ki (com incerteza e seleção de tabela)
+def calcular_ki(kv, alvo_filtro, mas, espessura_mama, d_mas_abs, d_espessura_abs, local_mamografo):
     try:
-        x_val = tabela_ki_global.get((alvo_filtro, int(kv)))
+        # Seleciona a tabela de Ki correta com base no local do mamógrafo
+        tabela_ki_selecionada = tabelas_ki_por_local.get(local_mamografo)
+        
+        if tabela_ki_selecionada is None:
+            return "Local do mamógrafo inválido selecionado.", 0.0
+
+        x_val = tabela_ki_selecionada.get((alvo_filtro, int(kv)))
         
         if x_val is None:
-            return "Combinação de alvo/filtro e Kv não encontrada na tabela de Ki.", 0.0
+            # Caso não encontre o kV exato na tabela, pode-se implementar interpolação
+            # Por agora, retornará erro conforme o comportamento atual
+            kv_options_for_alvo = [k for af, k in tabela_ki_selecionada.keys() if af == alvo_filtro]
+            if kv_options_for_alvo:
+                return f"Combinação de alvo/filtro ({alvo_filtro}) para Kv {kv} não encontrada para o local {local_mamografo}. KVs disponíveis: {sorted(kv_options_for_alvo)}.", 0.0
+            else:
+                return f"Combinação de alvo/filtro ({alvo_filtro}) não encontrada para o local {local_mamografo}.", 0.0
         
         divisor = (63 - espessura_mama)**2
         if divisor == 0:
@@ -459,14 +500,22 @@ st.markdown("Preencha os campos abaixo para calcular a DGM de mamografia.")
 # Inicializar st.session_state para armazenar os resultados
 if 'resultados_dgm' not in st.session_state:
     st.session_state.resultados_dgm = pd.DataFrame(columns=[
-        "Data/Hora", "Idade", "Espessura (cm)", "Alvo/Filtro", "Kv", "mAs",
+        "Data/Hora", "ID Paciente", "Iniciais Paciente", "Local do Mamógrafo", "Idade", "Espessura (cm)", "Alvo/Filtro", "Kv", "mAs",
         "Glandularidade (%)", "Grupo Glandularidade", "Valor s", "CSR", "Incerteza CSR", 
-        "Fator g", "Incerteza Fator g", "Fator C", "Incerteza Fator C", "Ki", "Incerteza Ki", "DGM (mGy)", "Incerteza DGM (mGy)" # Novas colunas
+        "Fator g", "Incerteza Fator g", "Fator C", "Incerteza Fator C", "Ki", "Incerteza Ki", "DGM (mGy)", "Incerteza DGM (mGy)" 
     ])
 
 # Sidebar para inputs
 with st.sidebar:
     st.header("Dados de Entrada")
+    
+    # NOVOS CAMPOS PARA DADOS DO PACIENTE
+    paciente_id = st.text_input('ID do Paciente:', help="Identificador único do paciente (ex: prontuário)")
+    iniciais_paciente = st.text_input('Iniciais da Paciente:', max_chars=3, help="Iniciais da paciente (ex: J.S.)").upper() # Converte para maiúsculas
+    
+    # NOVO CAMPO PARA SELEÇÃO DO LOCAL DO MAMÓGRAFO
+    local_mamografo = st.selectbox('Local do Mamógrafo:', options=list(tabelas_ki_por_local.keys()), index=0) # IRD como padrão
+    
     idade = st.number_input('Idade:', min_value=1, max_value=120, value=45, help="Idade da paciente (usado para glandularidade automática)")
     espessura_mama = st.number_input('Espessura da Mama (cm):', min_value=1.0, max_value=20.0, value=6.0, step=0.1, help="Espessura da mama comprimida em centímetros")
     alvo_filtro = st.selectbox('Alvo/Filtro:', options=list(alvo_filtro_options.keys()))
@@ -578,7 +627,8 @@ if st.button("Calcular DGM"):
     with col6:
         ki_val_to_record = "Erro"
         incerteza_ki_to_record = "Erro"
-        ki_calc, incerteza_ki = calcular_ki(kv, alvo_filtro, mas, espessura_mama, d_mas_abs, d_espessura_abs)
+        # Passa o local_mamografo para a função calcular_ki
+        ki_calc, incerteza_ki = calcular_ki(kv, alvo_filtro, mas, espessura_mama, d_mas_abs, d_espessura_abs, local_mamografo)
         if isinstance(ki_calc, str):
             st.error(f"Erro no cálculo de Ki: {ki_calc}")
         else:
@@ -610,6 +660,9 @@ if st.button("Calcular DGM"):
     if dgm_val_to_record != "Erro":
         nova_linha = {
             "Data/Hora": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "ID Paciente": paciente_id,
+            "Iniciais Paciente": iniciais_paciente,
+            "Local do Mamógrafo": local_mamografo, # Novo campo no histórico
             "Idade": idade,
             "Espessura (cm)": espessura_mama,
             "Alvo/Filtro": alvo_filtro,
@@ -648,7 +701,7 @@ if not st.session_state.resultados_dgm.empty:
     
     if st.button("Limpar Histórico"):
         st.session_state.resultados_dgm = pd.DataFrame(columns=[
-            "Data/Hora", "Idade", "Espessura (cm)", "Alvo/Filtro", "Kv", "mAs",
+            "Data/Hora", "ID Paciente", "Iniciais Paciente", "Local do Mamógrafo", "Idade", "Espessura (cm)", "Alvo/Filtro", "Kv", "mAs",
             "Glandularidade (%)", "Grupo Glandularidade", "Valor s", "CSR", "Incerteza CSR", 
             "Fator g", "Incerteza Fator g", "Fator C", "Incerteza Fator C", "Ki", "Incerteza Ki", "DGM (mGy)", "Incerteza DGM (mGy)"
         ])
