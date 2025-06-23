@@ -194,14 +194,17 @@ def calcular_fator_g(csr_val, espessura_val, d_espessura_abs):
     """
     try:
         # Encontra a faixa de CSR mais próxima para obter as constantes
-        csr_keys = list(FATOR_G_CONSTANTS_UNCERTAINTIES.keys())
-        csr_aproximado_key = min(csr_keys, key=lambda x: abs(x - csr_val))
-        
-        constants_data = FATOR_G_CONSTANTS_UNCERTAINTIES.get(csr_aproximado_key)
+        # Garante que csr_val seja um float para comparação
+        csr_val = float(csr_val) 
 
+        csr_keys = list(FATOR_G_CONSTANTS_UNCERTAINTIES.keys())
+        # Garante que as chaves também sejam floats para a comparação precisa
+        csr_keys_float = [float(k) for k in csr_keys] 
+        csr_aproximado_key = min(csr_keys_float, key=lambda x: abs(x - csr_val))
+        
+        constants_data = FATOR_G_CONSTANTS_UNCERTAINTIES.get(csr_aproximado_key) # Usa a chave float
+        
         if not constants_data:
-            # Isso pode acontecer se csr_val estiver muito fora das chaves,
-            # ou se FATOR_G_CONSTANTS_UNCERTAINTIES estiver vazio/malformado.
             return "CSR fora do intervalo suportado para cálculo do fator g.", 0.0
 
         a0, da0 = constants_data['a0'], constants_data['da0']
@@ -239,7 +242,7 @@ def calcular_fator_g(csr_val, espessura_val, d_espessura_abs):
         return fator_g_val, round(incerteza_fator_g, 4)
     
     except Exception as e:
-        print(f"Erro detalhado no Fator g: {e}") # Esta linha imprimirá a causa do erro nos logs
+        print(f"Erro detalhado no Fator g: {e}") 
         return "Erro Fator g", 0.0
 
 # FUNÇÃO DE GLANDULARIDADE (incerteza não propagada aqui, assumida como exata)
@@ -337,6 +340,7 @@ def calcular_fator_c(csr, espessura, glandularidade, d_espessura_abs):
 # Função para calcular o Ki
 def calcular_ki(kv_val, alvo_filtro, mas_val, espessura_mama_val, d_mas_abs, d_espessura_abs):
     try:
+        # Garante que kv_val seja inteiro para a chave da tabela
         x_val = tabela_ki_global.get((alvo_filtro, int(kv_val)), 0)
         
         if x_val == 0:
@@ -348,7 +352,7 @@ def calcular_ki(kv_val, alvo_filtro, mas_val, espessura_mama_val, d_mas_abs, d_e
 
         ki_val = round(((x_val * mas_val)*2500) / divisor_val, 2)
 
-        # Incerteza do valor 'x' da tabela Ki
+        # Incerteza do valor 'x' da tabela Ki (d_x_abs)
         d_x_abs = x_val * INCERTEZA_KI_X_PERCENTUAL
 
         # Derivadas parciais de Ki = (x * mAs * 2500) / (63 - e)^2
