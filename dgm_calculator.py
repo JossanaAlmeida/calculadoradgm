@@ -66,9 +66,9 @@ FATOR_G_CONSTANTS_UNCERTAINTIES = {
 # Incertezas das entradas (em porcentagem do valor)
 INCERTEZA_KV_PERCENTUAL = 0.01  # ±1%
 INCERTEZA_MAS_PERCENTUAL = 0.05 # ±5%
-INCERTEZA_ESPESSURA_PERCENTUAL = 0.02 # ±2% (considerando 1 a 2mm como 2% a 5% de 2 a 11cm)
-INCERTEZA_X_KI_PERCENTUAL = 0.001 # ±0,1% para os valores de 'x' na tabela Ki
-INCERTEZA_COEFS_FATOR_C_PERCENTUAL = 0.005 # ±0,5% para os coeficientes das fórmulas do Fator C
+INCERTEZA_ESPESSURA_PERCENTUAL = 0.05 # ±5% (considerando 1 a 2mm como 2% a 5% de 2 a 11cm)
+INCERTEZA_X_KI_PERCENTUAL = 0.02 # ±2% para os valores de 'x' na tabela Ki
+INCERTEZA_COEFS_FATOR_C_PERCENTUAL = 0.05 # ±5% para os coeficientes das fórmulas do Fator C
 
 # --- FIM DICIONÁRIOS GLOBAIS E CONSTANTES DE INCERTEZA ---
 
@@ -433,6 +433,9 @@ def calcular_dgm(ki_val, s_val, fator_g_val, fator_c_val, incerteza_ki, incertez
                 (partial_deriv_fc, incerteza_fator_c)
             ]
         )
+        
+        # Multiplica a incerteza da DGM por 10% conforme solicitado
+        incerteza_dgm = incerteza_dgm * 0.10
 
         return round(dgm, 2), round(incerteza_dgm, 4)
     except Exception as e: # Captura qualquer erro
