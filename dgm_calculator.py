@@ -193,19 +193,32 @@ def calcular_fator_g(csr_val, espessura_val, d_espessura_abs):
     Calcula o fator g e sua incerteza.
     """
     try:
-        # Encontra a faixa de CSR mais próxima para obter as constantes
         # Garante que csr_val seja um float para comparação
-        csr_val = float(csr_val) 
+        csr_val_float = float(csr_val) 
 
         csr_keys = list(FATOR_G_CONSTANTS_UNCERTAINTIES.keys())
         # Garante que as chaves também sejam floats para a comparação precisa
-        csr_keys_float = [float(k) for k in csr_keys] 
-        csr_aproximado_key = min(csr_keys_float, key=lambda x: abs(x - csr_val))
+        csr_keys_float = [float(k) for k in csr_keys] # Convertendo chaves para float para min()
         
-        constants_data = FATOR_G_CONSTANTS_UNCERTAINTIES.get(csr_aproximado_key) # Usa a chave float
+        csr_aproximado_key = min(csr_keys_float, key=lambda x: abs(x - csr_val_float))
         
-        if not constants_data:
+        # O problema estava aqui: constants_data = FATOR_G_CONSTANTS_UNCERTAINTIES.get(csr_aproximado_key)
+        # O .get() precisa da chave ORIGINAL, não da chave float convertida.
+        # Encontra a chave original correspondente ao float aproximado
+        original_csr_key = None
+        for key in FATOR_G_CONSTANTS_UNCERTAINTIES.keys():
+            if abs(float(key) - csr_aproximado_key) < 1e-9: # Comparação com tolerância para floats
+                original_csr_key = key
+                break
+
+        if original_csr_key is None:
             return "CSR fora do intervalo suportado para cálculo do fator g.", 0.0
+
+        constants_data = FATOR_G_CONSTANTS_UNCERTAINTIES.get(original_csr_key)
+        
+        if not constants_data: # Segurança extra
+             return "Constantes Fator g não encontradas para CSR aproximado.", 0.0
+
 
         a0, da0 = constants_data['a0'], constants_data['da0']
         a1, da1 = constants_data['a1'], constants_data['da1']
@@ -352,7 +365,7 @@ def calcular_ki(kv_val, alvo_filtro, mas_val, espessura_mama_val, d_mas_abs, d_e
 
         ki_val = round(((x_val * mas_val)*2500) / divisor_val, 2)
 
-        # Incerteza do valor 'x' da tabela Ki (d_x_abs)
+        # Incerteza do valor 'x' da tabela Ki
         d_x_abs = x_val * INCERTEZA_KI_X_PERCENTUAL
 
         # Derivadas parciais de Ki = (x * mAs * 2500) / (63 - e)^2
@@ -495,6 +508,7 @@ if st.button("Calcular DGM"):
             incerteza_csr_to_record = incerteza_csr
 
     with col4:
+        # Passando csr_val_to_record para garantir que é o valor numérico ou "Erro"
         fator_g_val, incerteza_fator_g = calcular_fator_g(csr_val_to_record, espessura_mama, d_espessura_abs)
         
         if isinstance(fator_g_val, str):
