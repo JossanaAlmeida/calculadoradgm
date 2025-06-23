@@ -113,6 +113,109 @@ def propagate_uncertainty(value_func, uncertainty_terms):
 
 # --- FIM FUNÇÃO GENÉRICA DE PROPAGAÇÃO DE INCERTEZAS ---
 
+# Função auxiliar para extrair coeficientes do Fator C.
+# Movida para o escopo global para resolver o NameError.
+def get_coeffs_from_lambda_for_fator_c(csr_key, group_key):
+    coeffs_map = {
+        0.34: {
+            1: {'a': 0.0004, 'b': -0.0105, 'c': 0.093, 'd': 0.9449},
+            2: {'a': 0.0001, 'b': -0.0035, 'c': 0.0295, 'd': 0.9831},
+            3: {'a': -0.0001, 'b': 0.0028, 'c': -0.0242, 'd': 1.0105},
+            4: {'a': -0.0005, 'b': 0.0103, 'c': -0.0773, 'd': 1.0343}
+        },
+        0.35: {
+            1: {'a': 0.0004, 'b': -0.0105, 'c': 0.093, 'd': 0.9449},
+            2: {'a': 0.0001, 'b': -0.0035, 'c': 0.0295, 'd': 0.9831},
+            3: {'a': -0.0001, 'b': 0.0028, 'c': -0.0242, 'd': 1.0105},
+            4: {'a': -0.0005, 'b': 0.0103, 'c': -0.0773, 'd': 1.0343}
+        },
+        0.36: {
+            1: {'a': 0.0004, 'b': -0.0103, 'c': 0.0915, 'd': 0.9443},
+            2: {'a': 0.0002, 'b': -0.0044, 'c': 0.0338, 'd': 0.9768},
+            3: {'a': -0.0001, 'b': 0.0029, 'c': -0.0248, 'd': 1.0118},
+            4: {'a': -0.0004, 'b': 0.0093, 'c': -0.0726, 'd': 1.03}
+        },
+        0.37: {
+            1: {'a': 0.0005, 'b': -0.0117, 'c': 0.098, 'd': 0.9345},
+            2: {'a': 0.0002, 'b': -0.0041, 'c': 0.0325, 'd': 0.9783},
+            3: {'a': -0.0001, 'b': 0.003, 'c': -0.0247, 'd': 1.0117},
+            4: {'a': -0.0004, 'b': 0.0091, 'c': -0.0718, 'd': 1.0304}
+        },
+        0.38: {
+            1: {'a': 0.0005, 'b': -0.0117, 'c': 0.0978, 'd': 0.9342},
+            2: {'a': 0.0002, 'b': -0.0041, 'c': 0.0324, 'd': 0.9782},
+            3: {'a': -0.0001, 'b': 0.0031, 'c': -0.0252, 'd': 1.0126},
+            4: {'a': -0.0004, 'b': 0.009, 'c': -0.0715, 'd': 1.0306}
+        },
+        0.39: {
+            1: {'a': 0.0005, 'b': -0.0116, 'c': 0.0974, 'd': 0.934},
+            2: {'a': 0.0002, 'b': -0.0041, 'c': 0.0324, 'd': 0.9782},
+            3: {'a': -0.0001, 'b': 0.0031, 'c': -0.0251, 'd': 1.0126},
+            4: {'a': -0.0004, 'b': 0.0089, 'c': -0.0712, 'd': 1.0311}
+        },
+        0.40: {
+            1: {'a': 0.0005, 'b': -0.0114, 'c': 0.0959, 'd': 0.9335},
+            2: {'a': 0.0002, 'b': -0.0041, 'c': 0.0322, 'd': 0.9779},
+            3: {'a': -0.0001, 'b': 0.0031, 'c': -0.0248, 'd': 1.0128},
+            4: {'a': -0.0004, 'b': 0.0087, 'c': -0.0703, 'd': 1.0324}
+        },
+        0.41: {
+            1: {'a': 0.0007, 'b': -0.0154, 'c': 0.1207, 'd': 0.8822},
+            2: {'a': 0.0002, 'b': -0.0036, 'c': 0.0299, 'd': 0.9801},
+            3: {'a': -0.0001, 'b': 0.0031, 'c': -0.0248, 'd': 1.0125},
+            4: {'a': -0.0004, 'b': 0.009, 'c': -0.0716, 'd': 1.0352}
+        },
+        0.42: {
+            1: {'a': 0.0007, 'b': -0.0165, 'c': 0.1278, 'd': 0.8677},
+            2: {'a': 0.0001, 'b': -0.0034, 'c': 0.0293, 'd': 0.9807},
+            3: {'a': -0.0001, 'b': 0.0031, 'c': -0.0247, 'd': 1.0124},
+            4: {'a': -0.0004, 'b': 0.0091, 'c': -0.0719, 'd': 1.0358}
+        },
+        0.43: {
+            1: {'a': 0.0008, 'b': -0.0177, 'c': 0.1349, 'd': 0.853},
+            2: {'a': 0.0001, 'b': -0.0033, 'c': 0.0286, 'd': 0.9815},
+            3: {'a': -0.0001, 'b': 0.0031, 'c': -0.0247, 'd': 1.0124},
+            4: {'a': -0.0004, 'b': 0.0092, 'c': -0.0724, 'd': 1.0368}
+        },
+        0.44: {
+            1: {'a': 0.0009, 'b': -0.0188, 'c': 0.1419, 'd': 0.8384},
+            2: {'a': 0.0001, 'b': -0.0032, 'c': 0.0279, 'd': 0.9822},
+            3: {'a': -0.0001, 'b': 0.0031, 'c': -0.0246, 'd': 1.0122},
+            4: {'a': -0.0004, 'b': 0.0092, 'c': -0.0727, 'd': 1.0375}
+        },
+        0.45: {
+            1: {'a': 0.0011, 'b': -0.0229, 'c': 0.1669, 'd': 0.787},
+            2: {'a': 0.00009, 'b': -0.0026, 'c': 0.0252, 'd': 0.9851},
+            3: {'a': -0.0001, 'b': 0.0029, 'c': -0.0238, 'd': 1.0109},
+            4: {'a': -0.0004, 'b': 0.009, 'c': -0.0719, 'd': 1.0374}
+        },
+        0.46: {
+            1: {'a': 0.0007, 'b': -0.0162, 'c': 0.1292, 'd': 0.8523},
+            2: {'a': 0.00008, 'b': -0.0024, 'c': 0.0241, 'd': 0.9865},
+            3: {'a': -0.0001, 'b': 0.0029, 'c': -0.0241, 'd': 1.0127},
+            4: {'a': -0.0004, 'b': 0.0087, 'c': -0.0706, 'd': 1.0377}
+        },
+        0.47: {
+            1: {'a': 0.0006, 'b': -0.015, 'c': 0.1216, 'd': 0.8666},
+            2: {'a': 0.00008, 'b': -0.0024, 'c': 0.0238, 'd': 0.9869},
+            3: {'a': -0.0001, 'b': 0.0029, 'c': -0.0242, 'd': 1.0132},
+            4: {'a': -0.0004, 'b': 0.0086, 'c': -0.07, 'd': 1.0375}
+        },
+        0.48: {
+            1: {'a': 0.0008, 'b': -0.0177, 'c': 0.1349, 'd': 0.853},
+            2: {'a': 0.0008, 'b': -0.0177, 'c': 0.1349, 'd': 0.853}, # Duplicado, verificar no original se é intencional
+            3: {'a': 0.0004, 'b': -0.0105, 'c': 0.093, 'd': 1.077},
+            4: {'a': -0.0004, 'b': 0.0093, 'c': -0.0726, 'd': 1.03}
+        },
+        0.50: {
+            1: {'a': 0.0004, 'b': -0.0105, 'c': 0.093, 'd': 1.077},
+            2: {'a': 0.0008, 'b': -0.0177, 'c': 0.1349, 'd': 0.853},
+            3: {'a': 0.0004, 'b': -0.0105, 'c': 0.093, 'd': 1.077},
+            4: {'a': -0.0004, 'b': 0.0093, 'c': -0.0726, 'd': 1.03}
+        },
+    }
+    return coeffs_map.get(csr_key, {}).get(group_key, None)
+
 
 # Fórmulas para CSR (função)
 def calcular_csr(kv_val, alvo_filtro, d_kv_abs):
@@ -250,117 +353,7 @@ def calcular_fator_c(csr, espessura, glandularidade, d_espessura_abs):
         if csr_aproximado not in formulas_fator_c:
             return "CSR fora do intervalo suportado.", 0.0
 
-        # Mapeamento manual dos coeficientes para cada entrada no formulas_fator_c
-        # Esta é a parte "hacky" para obter os coeficientes sem reestruturar o dicionário global
-        def get_coeffs_from_lambda_for_fator_c(csr_key, group_key):
-            coeffs_map = {
-                0.34: {
-                    1: {'a': 0.0004, 'b': -0.0105, 'c': 0.093, 'd': 0.9449},
-                    2: {'a': 0.0001, 'b': -0.0035, 'c': 0.0295, 'd': 0.9831},
-                    3: {'a': -0.0001, 'b': 0.0028, 'c': -0.0242, 'd': 1.0105},
-                    4: {'a': -0.0005, 'b': 0.0103, 'c': -0.0773, 'd': 1.0343}
-                },
-                0.35: {
-                    1: {'a': 0.0004, 'b': -0.0105, 'c': 0.093, 'd': 0.9449},
-                    2: {'a': 0.0001, 'b': -0.0035, 'c': 0.0295, 'd': 0.9831},
-                    3: {'a': -0.0001, 'b': 0.0028, 'c': -0.0242, 'd': 1.0105},
-                    4: {'a': -0.0005, 'b': 0.0103, 'c': -0.0773, 'd': 1.0343}
-                },
-                0.36: {
-                    1: {'a': 0.0004, 'b': -0.0103, 'c': 0.0915, 'd': 0.9443},
-                    2: {'a': 0.0002, 'b': -0.0044, 'c': 0.0338, 'd': 0.9768},
-                    3: {'a': -0.0001, 'b': 0.0029, 'c': -0.0248, 'd': 1.0118},
-                    4: {'a': -0.0004, 'b': 0.0093, 'c': -0.0726, 'd': 1.03}
-                },
-                0.37: {
-                    1: {'a': 0.0005, 'b': -0.0117, 'c': 0.098, 'd': 0.9345},
-                    2: {'a': 0.0002, 'b': -0.0041, 'c': 0.0325, 'd': 0.9783},
-                    3: {'a': -0.0001, 'b': 0.003, 'c': -0.0247, 'd': 1.0117},
-                    4: {'a': -0.0004, 'b': 0.0091, 'c': -0.0718, 'd': 1.0304}
-                },
-                0.38: {
-                    1: {'a': 0.0005, 'b': -0.0117, 'c': 0.0978, 'd': 0.9342},
-                    2: {'a': 0.0002, 'b': -0.0041, 'c': 0.0324, 'd': 0.9782},
-                    3: {'a': -0.0001, 'b': 0.0031, 'c': -0.0252, 'd': 1.0126},
-                    4: {'a': -0.0004, 'b': 0.009, 'c': -0.0715, 'd': 1.0306}
-                },
-                0.39: {
-                    1: {'a': 0.0005, 'b': -0.0116, 'c': 0.0974, 'd': 0.934},
-                    2: {'a': 0.0002, 'b': -0.0041, 'c': 0.0324, 'd': 0.9782},
-                    3: {'a': -0.0001, 'b': 0.0031, 'c': -0.0251, 'd': 1.0126},
-                    4: {'a': -0.0004, 'b': 0.0089, 'c': -0.0712, 'd': 1.0311}
-                },
-                0.40: {
-                    1: {'a': 0.0005, 'b': -0.0114, 'c': 0.0959, 'd': 0.9335},
-                    2: {'a': 0.0002, 'b': -0.0041, 'c': 0.0322, 'd': 0.9779},
-                    3: {'a': -0.0001, 'b': 0.0031, 'c': -0.0248, 'd': 1.0128},
-                    4: {'a': -0.0004, 'b': 0.0087, 'c': -0.0703, 'd': 1.0324}
-                },
-                0.41: {
-                    1: {'a': 0.0007, 'b': -0.0154, 'c': 0.1207, 'd': 0.8822},
-                    2: {'a': 0.0002, 'b': -0.0036, 'c': 0.0299, 'd': 0.9801},
-                    3: {'a': -0.0001, 'b': 0.0031, 'c': -0.0248, 'd': 1.0125},
-                    4: {'a': -0.0004, 'b': 0.009, 'c': -0.0716, 'd': 1.0352}
-                },
-                0.42: {
-                    1: {'a': 0.0007, 'b': -0.0165, 'c': 0.1278, 'd': 0.8677},
-                    2: {'a': 0.0001, 'b': -0.0034, 'c': 0.0293, 'd': 0.9807},
-                    3: {'a': -0.0001, 'b': 0.0031, 'c': -0.0247, 'd': 1.0124},
-                    4: {'a': -0.0004, 'b': 0.0091, 'c': -0.0719, 'd': 1.0358}
-                },
-                0.43: {
-                    1: {'a': 0.0008, 'b': -0.0177, 'c': 0.1349, 'd': 0.853},
-                    2: {'a': 0.0001, 'b': -0.0033, 'c': 0.0286, 'd': 0.9815},
-                    3: {'a': -0.0001, 'b': 0.0031, 'c': -0.0247, 'd': 1.0124},
-                    4: {'a': -0.0004, 'b': 0.0092, 'c': -0.0724, 'd': 1.0368}
-                },
-                0.44: {
-                    1: {'a': 0.0009, 'b': -0.0188, 'c': 0.1419, 'd': 0.8384},
-                    2: {'a': 0.0001, 'b': -0.0032, 'c': 0.0279, 'd': 0.9822},
-                    3: {'a': -0.0001, 'b': 0.0031, 'c': -0.0246, 'd': 1.0122},
-                    4: {'a': -0.0004, 'b': 0.0092, 'c': -0.0727, 'd': 1.0375}
-                },
-                0.45: {
-                    1: {'a': 0.0011, 'b': -0.0229, 'c': 0.1669, 'd': 0.787},
-                    2: {'a': 0.00009, 'b': -0.0026, 'c': 0.0252, 'd': 0.9851},
-                    3: {'a': -0.0001, 'b': 0.0029, 'c': -0.0238, 'd': 1.0109},
-                    4: {'a': -0.0004, 'b': 0.009, 'c': -0.0719, 'd': 1.0374}
-                },
-                0.46: {
-                    1: {'a': 0.0007, 'b': -0.0162, 'c': 0.1292, 'd': 0.8523},
-                    2: {'a': 0.00008, 'b': -0.0024, 'c': 0.0241, 'd': 0.9865},
-                    3: {'a': -0.0001, 'b': 0.0029, 'c': -0.0241, 'd': 1.0127},
-                    4: {'a': -0.0004, 'b': 0.0087, 'c': -0.0706, 'd': 1.0377}
-                },
-                0.47: {
-                    1: {'a': 0.0006, 'b': -0.015, 'c': 0.1216, 'd': 0.8666},
-                    2: {'a': 0.00008, 'b': -0.0024, 'c': 0.0238, 'd': 0.9869},
-                    3: {'a': -0.0001, 'b': 0.0029, 'c': -0.0242, 'd': 1.0132},
-                    4: {'a': -0.0004, 'b': 0.0086, 'c': -0.07, 'd': 1.0375}
-                },
-                0.48: {
-                    1: {'a': 0.0008, 'b': -0.0177, 'c': 0.1349, 'd': 0.853},
-                    2: {'a': 0.0008, 'b': -0.0177, 'c': 0.1349, 'd': 0.853}, # Duplicado, verificar no original se é intencional
-                    3: {'a': 0.0004, 'b': -0.0105, 'c': 0.093, 'd': 1.077},
-                    4: {'a': -0.0004, 'b': 0.0093, 'c': -0.0726, 'd': 1.03}
-                },
-                0.50: {
-                    1: {'a': 0.0004, 'b': -0.0105, 'c': 0.093, 'd': 1.077},
-                    2: {'a': 0.0008, 'b': -0.0177, 'c': 0.1349, 'd': 0.853},
-                    3: {'a': 0.0004, 'b': -0.0105, 'c': 0.093, 'd': 1.077},
-                    4: {'a': -0.0004, 'b': 0.0093, 'c': -0.0726, 'd': 1.03}
-                },
-            }
-            return coeffs_map.get(csr_key, {}).get(group_key, None)
-
-
-        # Recalcula o fator C usando os coeficientes para ter os valores de a,b,c,d
-        # para as derivadas, mesmo que a formula_func ainda seja a original lambda.
-        # Isso significa que `formulas_fator_c` **precisa** ser re-estruturado no topo.
-        # Vou fazer a modificação global do `formulas_fator_c` para suportar isso.
-
-        # Temporariamente, para que a função compile e funcione com a simulação:
-        coeffs = get_coeffs_from_lambda(csr_aproximado, grupo_val)
+        coeffs = get_coeffs_from_lambda_for_fator_c(csr_aproximado, grupo_val)
         if not coeffs:
             return "Erro: Coeficientes do Fator C não encontrados.", 0.0
 
@@ -376,338 +369,4 @@ def calcular_fator_c(csr, espessura, glandularidade, d_espessura_abs):
         dd = d * INCERTEZA_COEFS_FATOR_C_PERCENTUAL
 
         # Derivadas parciais de Fator C = a*e^3 + b*e^2 + c*e + d
-        partial_deriv_espessura = (3 * a * espessura**2) + (2 * b * espessura) + c
-        partial_deriv_a = espessura**3
-        partial_deriv_b = espessura**2
-        partial_deriv_c = espessura
-        partial_deriv_d = 1
-
-        incerteza_fator_c = propagate_uncertainty(
-            lambda: fator_c_val,
-            [
-                (partial_deriv_espessura, d_espessura_abs),
-                (partial_deriv_a, da),
-                (partial_deriv_b, db),
-                (partial_deriv_c, dc),
-                (partial_deriv_d, dd)
-            ]
-        )
-        return fator_c_val, round(incerteza_fator_c, 4)
-
-    except (ValueError, TypeError) as e:
-        return f"Entrada inválida para Fator C: {e}", 0.0
-    except Exception as e:
-        return f"Erro inesperado no cálculo do Fator C: {e}", 0.0
-
-# Função para calcular o Ki (com incerteza e seleção de tabela)
-def calcular_ki(kv, alvo_filtro, mas, espessura_mama, d_mas_abs, d_espessura_abs, local_mamografo):
-    try:
-        # Seleciona a tabela de Ki correta com base no local do mamógrafo
-        tabela_ki_selecionada = tabelas_ki_por_local.get(local_mamografo)
-        
-        if tabela_ki_selecionada is None:
-            return "Local do mamógrafo inválido selecionado.", 0.0
-
-        x_val = tabela_ki_selecionada.get((alvo_filtro, int(kv)))
-        
-        if x_val is None:
-            # Caso não encontre o kV exato na tabela, pode-se implementar interpolação
-            # Por agora, retornará erro conforme o comportamento atual
-            kv_options_for_alvo = [k for af, k in tabela_ki_selecionada.keys() if af == alvo_filtro]
-            if kv_options_for_alvo:
-                return f"Combinação de alvo/filtro ({alvo_filtro}) para Kv {kv} não encontrada para o local {local_mamografo}. KVs disponíveis: {sorted(kv_options_for_alvo)}.", 0.0
-            else:
-                return f"Combinação de alvo/filtro ({alvo_filtro}) não encontrada para o local {local_mamografo}.", 0.0
-        
-        divisor = (63 - espessura_mama)**2
-        if divisor == 0:
-            return "Erro: A espessura da mama é inválida para o cálculo de Ki (63 - espessura deve ser diferente de zero).", 0.0
-
-        ki_val = round(((x_val * mas)*2500) / divisor, 2)
-
-        # Incerteza de x_val
-        d_x_abs = x_val * INCERTEZA_X_KI_PERCENTUAL
-
-        # Derivadas parciais de Ki = (x * mas * 2500) / (63 - espessura_mama)**2
-        # dKi/dx = (mas * 2500) / (63 - espessura_mama)**2
-        partial_deriv_x = (mas * 2500) / divisor
-
-        # dKi/dmas = (x * 2500) / (63 - espessura_mama)**2
-        partial_deriv_mas = (x_val * 2500) / divisor
-
-        # dKi/despessura = (x * mas * 2500) * (-2 * (63 - espessura_mama) * -1) / ((63 - espessura_mama)**2)**2
-        # dKi/despessura = (x * mas * 2500 * 2 * (63 - espessura_mama)) / ((63 - espessura_mama)**4)
-        # dKi/despessura = (x * mas * 2500 * 2) / ((63 - espessura_mama)**3)
-        partial_deriv_espessura = (x_val * mas * 2500 * 2) / ((63 - espessura_mama)**3)
-
-        incerteza_ki = propagate_uncertainty(
-            lambda: ki_val,
-            [
-                (partial_deriv_x, d_x_abs),
-                (partial_deriv_mas, d_mas_abs),
-                (partial_deriv_espessura, d_espessura_abs)
-            ]
-        )
-        
-        return ki_val, round(incerteza_ki, 4)
-    except Exception as e:
-        return f"Erro no cálculo de Ki: {e}", 0.0
-
-
-# --- FUNÇÃO calcular_dgm (AGORA RETORNA VALOR E INCERTEZA) ---
-def calcular_dgm(ki_val, s_val, fator_g_val, fator_c_val, incerteza_ki, incerteza_s, incerteza_fator_g, incerteza_fator_c):
-    try:
-        dgm = ki_val * s_val * fator_g_val * fator_c_val
-        
-        # Derivadas parciais de DGM = Ki * s * Fg * Fc
-        partial_deriv_ki = s_val * fator_g_val * fator_c_val
-        partial_deriv_s = ki_val * fator_g_val * fator_c_val
-        partial_deriv_fg = ki_val * s_val * fator_c_val
-        partial_deriv_fc = ki_val * s_val * fator_g_val
-
-        incerteza_dgm = propagate_uncertainty(
-            lambda: dgm, # Valor da DGM
-            [
-                (partial_deriv_ki, incerteza_ki),
-                (partial_deriv_s, incerteza_s),
-                (partial_deriv_fg, incerteza_fator_g),
-                (partial_deriv_fc, incerteza_fator_c)
-            ]
-        )
-        
-        # Multiplica a incerteza da DGM por 10% conforme solicitado
-        incerteza_dgm = incerteza_dgm * 0.10
-
-        return round(dgm, 2), round(incerteza_dgm, 4)
-    except Exception as e: # Captura qualquer erro
-        return f"Erro DGM: {e}", 0.0
-
-# Funções para Exportação (CSV)
-@st.cache_data
-def to_csv(df):
-    return df.to_csv(index=False).encode('utf-8')
-
-# --- Interface Streamlit ---
-st.set_page_config(
-    page_title="Calculadora de DGM",
-    page_icon="🔬",
-    layout="centered"
-)
-
-st.title("🔬 Calculadora de Dose Glandular Média (DGM)")
-st.markdown("Preencha os campos abaixo para calcular a DGM de mamografia.")
-
-# Inicializar st.session_state para armazenar os resultados
-if 'resultados_dgm' not in st.session_state:
-    st.session_state.resultados_dgm = pd.DataFrame(columns=[
-        "Data/Hora", "ID Paciente", "Iniciais Paciente", "Local do Mamógrafo", "Idade", "Espessura (cm)", "Alvo/Filtro", "Kv", "mAs",
-        "Glandularidade (%)", "Grupo Glandularidade", "Valor s", "CSR", "Incerteza CSR", 
-        "Fator g", "Incerteza Fator g", "Fator C", "Incerteza Fator C", "Ki", "Incerteza Ki", "DGM (mGy)", "Incerteza DGM (mGy)" 
-    ])
-
-# Sidebar para inputs
-with st.sidebar:
-    st.header("Dados de Entrada")
-    
-    # NOVOS CAMPOS PARA DADOS DO PACIENTE
-    paciente_id = st.text_input('ID do Paciente:', help="Identificador único do paciente (ex: prontuário)")
-    iniciais_paciente = st.text_input('Iniciais da Paciente:', max_chars=3, help="Iniciais da paciente (ex: J.S.)").upper() # Converte para maiúsculas
-    
-    # NOVO CAMPO PARA SELEÇÃO DO LOCAL DO MAMÓGRAFO
-    local_mamografo = st.selectbox('Local do Mamógrafo:', options=list(tabelas_ki_por_local.keys()), index=0) # IRD como padrão
-    
-    idade = st.number_input('Idade:', min_value=1, max_value=120, value=45, help="Idade da paciente (usado para glandularidade automática)")
-    espessura_mama = st.number_input('Espessura da Mama (cm):', min_value=1.0, max_value=20.0, value=6.0, step=0.1, help="Espessura da mama comprimida em centímetros")
-    alvo_filtro = st.selectbox('Alvo/Filtro:', options=list(alvo_filtro_options.keys()))
-    kv = st.number_input('Kv:', min_value=1.0, max_value=50.0, value=28.0, step=0.1)
-    mas = st.number_input('mAs:', min_value=0.1, max_value=1000.0, value=50.0, step=0.1)
-    
-    sabe_glandularidade = st.checkbox("Eu sei a glandularidade (marcar para inserir manualmente)")
-    glandularidade_input = None
-    if sabe_glandularidade:
-        glandularidade_input = st.number_input('Glandularidade (%):', min_value=0.0, max_value=100.0, value=50.0, step=0.1)
-
-# Botão de Cálculo
-st.markdown("---")
-if st.button("Calcular DGM"):
-    st.subheader("Resultados do Cálculo Atual:")
-
-    # --- Cálculo de Incertezas Absolutas das Entradas ---
-    # Convertendo porcentagens para valores absolutos de incerteza
-    d_kv_abs = kv * INCERTEZA_KV_PERCENTUAL
-    d_mas_abs = mas * INCERTEZA_MAS_PERCENTUAL
-    d_espessura_abs = espessura_mama * INCERTEZA_ESPESSURA_PERCENTUAL
-
-    # --- Cálculo e Exibição de Glandularidade ---
-    col1, col2 = st.columns(2)
-    glandularidade = None
-    with col1:
-        if sabe_glandularidade and glandularidade_input is not None:
-            glandularidade = glandularidade_input
-            st.info(f"**Glandularidade informada:** {glandularidade:.1f}%")
-        else:
-            glandularidade_calc = calcular_glandularidade(idade, espessura_mama)
-            if isinstance(glandularidade_calc, str):
-                st.error(f"Erro ao calcular Glandularidade: {glandularidade_calc}")
-                glandularidade = "Erro"
-            else:
-                glandularidade = glandularidade_calc
-                st.info(f"**Glandularidade:** {glandularidade:.1f}%")
-
-    # --- Cálculo e Exibição de s ---
-    with col2:
-        s = alvo_filtro_options.get(alvo_filtro, "Inválido")
-        incerteza_s = 0.0 # Assumida como zero
-        if isinstance(s, str):
-            st.error(f"Erro no valor de s: {s}")
-            s_val = "Erro"
-        else:
-            st.info(f"**Valor de s:** {s}")
-            s_val = s
-
-    # --- Cálculo e Exibição de CSR e Fator g ---
-    col3, col4 = st.columns(2)
-    with col3:
-        # calcular_csr agora retorna (valor, incerteza)
-        csr_val, incerteza_csr = calcular_csr(kv, alvo_filtro, d_kv_abs)
-        if isinstance(csr_val, str):
-            st.error(f"Erro no cálculo de CSR: {csr_val}")
-            csr_val_to_record = "Erro" # Valor para registro no histórico
-            incerteza_csr_to_record = "Erro"
-        else:
-            st.info(f"**Valor de CSR:** {csr_val} ± {incerteza_csr}")
-            csr_val_to_record = csr_val
-            incerteza_csr_to_record = incerteza_csr
-
-    with col4:
-        # Fator g agora retorna (valor, incerteza)
-        fator_g_val, incerteza_fator_g = calcular_fator_g(csr_val_to_record, espessura_mama, d_espessura_abs)
-        
-        if isinstance(fator_g_val, str):
-            st.error(f"Erro no cálculo do Fator g: {fator_g_val}")
-            fator_g_val_to_record = "Erro"
-            incerteza_fator_g_to_record = "Erro"
-        else:
-            st.info(f"**Valor do Fator g:** {fator_g_val} ± {incerteza_fator_g}")
-            fator_g_val_to_record = fator_g_val
-            incerteza_fator_g_to_record = incerteza_fator_g
-
-    # --- Cálculo e Exibição de Fator C e Ki ---
-    col5, col6 = st.columns(2)
-    
-    grupo_glandularidade_val = "Não calculado"
-    if isinstance(glandularidade, (int, float)):
-        if glandularidade <= 25:
-            grupo_glandularidade_val = 1
-        elif glandularidade <= 50:
-            grupo_glandularidade_val = 2
-        elif glandularidade <= 75:
-            grupo_glandularidade_val = 3
-        else:
-            grupo_glandularidade_val = 4
-
-    with col5:
-        fator_c_val_to_record = "Erro"
-        incerteza_fator_c_to_record = "Erro"
-        if isinstance(csr_val_to_record, (int, float)) and isinstance(glandularidade, (int, float)):
-            csr_possiveis_fator_c_local = list(formulas_fator_c.keys()) 
-            csr_para_c = min(csr_possiveis_fator_c_local, key=lambda x: abs(x - csr_val_to_record))
-
-            fator_c_calc, incerteza_fator_c = calcular_fator_c(csr_para_c, espessura_mama, glandularidade, d_espessura_abs)
-
-            if isinstance(fator_c_calc, str):
-                st.error(f"Erro no cálculo do Fator C: {fator_c_calc}")
-            else:
-                st.info(f"**Valor do Fator C:** {fator_c_calc} ± {incerteza_fator_c}")
-                fator_c_val_to_record = fator_c_calc
-                incerteza_fator_c_to_record = incerteza_fator_c
-        else:
-            st.warning("Fator C não calculado devido a entradas inválidas de CSR ou Glandularidade.")
-
-    with col6:
-        ki_val_to_record = "Erro"
-        incerteza_ki_to_record = "Erro"
-        # Passa o local_mamografo para a função calcular_ki
-        ki_calc, incerteza_ki = calcular_ki(kv, alvo_filtro, mas, espessura_mama, d_mas_abs, d_espessura_abs, local_mamografo)
-        if isinstance(ki_calc, str):
-            st.error(f"Erro no cálculo de Ki: {ki_calc}")
-        else:
-            st.info(f"**Valor de Ki:** {ki_calc} ± {incerteza_ki}")
-            ki_val_to_record = ki_calc
-            incerteza_ki_to_record = incerteza_ki
-
-    # --- Cálculo e Exibição final da DGM e sua Incerteza ---
-    st.markdown("---")
-    dgm_val_to_record = "Erro"
-    incerteza_dgm_val_to_record = "Erro"
-    
-    if all(isinstance(val, (int, float)) for val in [ki_val_to_record, s_val, fator_g_val_to_record, fator_c_val_to_record, 
-                                                     incerteza_ki_to_record, incerteza_s, incerteza_fator_g_to_record, incerteza_fator_c_to_record]):
-        
-        dgm, incerteza_dgm = calcular_dgm(ki_val_to_record, s_val, fator_g_val_to_record, fator_c_val_to_record, 
-                                         incerteza_ki_to_record, incerteza_s, incerteza_fator_g_to_record, incerteza_fator_c_to_record)
-        
-        if isinstance(dgm, str):
-            st.error(f"Não foi possível calcular a DGM: {dgm}")
-        else:
-            st.success(f"**Valor da DGM:** {dgm} mGy ± {incerteza_dgm} mGy")
-            dgm_val_to_record = dgm
-            incerteza_dgm_val_to_record = incerteza_dgm
-    else:
-        st.error("Não foi possível calcular a DGM devido a erros nos valores anteriores ou incertezas inválidas.")
-
-    # Armazenar resultados na sessão
-    if dgm_val_to_record != "Erro":
-        nova_linha = {
-            "Data/Hora": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "ID Paciente": paciente_id,
-            "Iniciais Paciente": iniciais_paciente,
-            "Local do Mamógrafo": local_mamografo, # Novo campo no histórico
-            "Idade": idade,
-            "Espessura (cm)": espessura_mama,
-            "Alvo/Filtro": alvo_filtro,
-            "Kv": kv,
-            "mAs": mas,
-            "Glandularidade (%)": glandularidade,
-            "Grupo Glandularidade": grupo_glandularidade_val,
-            "Valor s": s_val,
-            "CSR": csr_val_to_record,
-            "Incerteza CSR": incerteza_csr_to_record, 
-            "Fator g": fator_g_val_to_record,
-            "Incerteza Fator g": incerteza_fator_g_to_record,
-            "Fator C": fator_c_val_to_record,
-            "Incerteza Fator C": incerteza_fator_c_to_record,
-            "Ki": ki_val_to_record,
-            "Incerteza Ki": incerteza_ki_to_record,
-            "DGM (mGy)": dgm_val_to_record,
-            "Incerteza DGM (mGy)": incerteza_dgm_val_to_record
-        }
-        st.session_state.resultados_dgm = pd.concat([st.session_state.resultados_dgm, pd.DataFrame([nova_linha])], ignore_index=True)
-
-# --- Exibição do Histórico e Botões ---
-st.markdown("---")
-st.subheader("Histórico de Cálculos:")
-
-if not st.session_state.resultados_dgm.empty:
-    st.dataframe(st.session_state.resultados_dgm, use_container_width=True)
-    
-    csv_data = to_csv(st.session_state.resultados_dgm)
-    st.download_button(
-        label="📥 Baixar Resultados como CSV",
-        data=csv_data,
-        file_name=f"resultados_dgm_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-        mime="text/csv",
-    )
-    
-    if st.button("Limpar Histórico"):
-        st.session_state.resultados_dgm = pd.DataFrame(columns=[
-            "Data/Hora", "ID Paciente", "Iniciais Paciente", "Local do Mamógrafo", "Idade", "Espessura (cm)", "Alvo/Filtro", "Kv", "mAs",
-            "Glandularidade (%)", "Grupo Glandularidade", "Valor s", "CSR", "Incerteza CSR", 
-            "Fator g", "Incerteza Fator g", "Fator C", "Incerteza Fator C", "Ki", "Incerteza Ki", "DGM (mGy)", "Incerteza DGM (mGy)"
-        ])
-        st.experimental_rerun()
-else:
-    st.info("Nenhum cálculo realizado ainda. Os resultados aparecerão aqui.")
-
-st.markdown("---")
-st.markdown("Desenvolvido por você, com o auxílio de um modelo de linguagem.")
+        partial_deriv_espessura = (3 * a * espessura**2) + (2
