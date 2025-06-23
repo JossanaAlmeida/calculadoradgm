@@ -183,7 +183,7 @@ def get_coeffs_from_lambda_for_fator_c(csr_key, group_key):
             1: {'a': 0.0009, 'b': -0.0188, 'c': 0.1419, 'd': 0.8384},
             2: {'a': 0.0001, 'b': -0.0032, 'c': 0.0279, 'd': 0.9822},
             3: {'a': -0.0001, 'b': 0.0031, 'c': -0.0246, 'd': 1.0122},
-            4: {'a': -0.0004, 'b': 0.0092, 'c': -0.0727, 'd': 1.0375} # CORRIGIDO: 'c' e 'd' malformados
+            4: {'a': -0.0004, 'b': 0.0092, 'c': -0.0727, 'd': 1.0375}
         },
         0.45: {
             1: {'a': 0.0011, 'b': -0.0229, 'c': 0.1669, 'd': 0.787},
@@ -211,8 +211,7 @@ def get_coeffs_from_lambda_for_fator_c(csr_key, group_key):
         },
         0.50: {
             1: {'a': 0.0004, 'b': -0.0105, 'c': 0.093, 'd': 1.077},
-            # CORRIGIDO: Coeficientes b e c combinados/ajustados da original
-            2: {'a': 0.0008, 'b': (-0.0177 + 0.1349), 'c': 0.0, 'd': 0.853},
+            2: {'a': 0.0008, 'b': (-0.0177 + 0.1349), 'c': 0.0, 'd': 0.853}, # Corrigido coeficientes para evitar ambiguidade na fórmula
             3: {'a': 0.0004, 'b': -0.0105, 'c': 0.093, 'd': 1.077},
             4: {'a': -0.0004, 'b': 0.0093, 'c': -0.0726, 'd': 1.03}
         },
@@ -415,26 +414,34 @@ def calcular_ki(kv, alvo_filtro, mas, espessura_mama, d_mas_abs, d_espessura_abs
             else:
                 return f"Combinação de alvo/filtro ({alvo_filtro}) não encontrada para o local {local_mamografo}.", 0.0
         
-        divisor = (63 - espessura_mama)**2
+        # Define os fatores específicos do Ki com base no local do mamógrafo
+        if local_mamografo == 'UFRJ':
+            conversion_factor = 1892.25
+            reference_thickness = 64
+        else: # Default para IRD e qualquer outro caso
+            conversion_factor = 2500
+            reference_thickness = 63
+            
+        divisor = (reference_thickness - espessura_mama)**2
         if divisor == 0:
-            return "Erro: A espessura da mama é inválida para o cálculo de Ki (63 - espessura deve ser diferente de zero).", 0.0
+            return f"Erro: A espessura da mama é inválida para o cálculo de Ki ({reference_thickness} - espessura deve ser diferente de zero).", 0.0
 
-        ki_val = round(((x_val * mas)*2500) / divisor, 2)
+        ki_val = round(((x_val * mas)*conversion_factor) / divisor, 2)
 
         # Incerteza de x_val
         d_x_abs = x_val * INCERTEZA_X_KI_PERCENTUAL
 
-        # Derivadas parciais de Ki = (x * mas * 2500) / (63 - espessura_mama)**2
-        # dKi/dx = (mas * 2500) / (63 - espessura_mama)**2
-        partial_deriv_x = (mas * 2500) / divisor
+        # Derivadas parciais de Ki = (x * mas * conversion_factor) / (reference_thickness - espessura_mama)**2
+        # dKi/dx = (mas * conversion_factor) / (reference_thickness - espessura_mama)**2
+        partial_deriv_x = (mas * conversion_factor) / divisor
 
-        # dKi/dmas = (x * 2500) / (63 - espessura_mama)**2
-        partial_deriv_mas = (x_val * 2500) / divisor
+        # dKi/dmas = (x * conversion_factor) / (reference_thickness - espessura_mama)**2
+        partial_deriv_mas = (x_val * conversion_factor) / divisor
 
-        # dKi/despessura = (x * mas * 2500) * (-2 * (63 - espessura_mama) * -1) / ((63 - espessura_mama)**2)**2
-        # dKi/despessura = (x * mas * 2500 * 2 * (63 - espessura_mama)) / ((63 - espessura_mama)**4)
-        # dKi/despessura = (x * mas * 2500 * 2) / ((63 - espessura_mama)**3)
-        partial_deriv_espessura = (x_val * mas * 2500 * 2) / ((63 - espessura_mama)**3)
+        # dKi/despessura = (x * mas * conversion_factor) * (-2 * (reference_thickness - espessura_mama) * -1) / ((reference_thickness - espessura_mama)**2)**2
+        # dKi/despessura = (x * mas * conversion_factor * 2 * (reference_thickness - espessura_mama)) / ((reference_thickness - espessura_mama)**4)
+        # dKi/despessura = (x * mas * conversion_factor * 2) / ((reference_thickness - espessura_mama)**3)
+        partial_deriv_espessura = (x_val * mas * conversion_factor * 2) / ((reference_thickness - espessura_mama)**3)
 
         incerteza_ki = propagate_uncertainty(
             lambda: ki_val,
@@ -706,4 +713,4 @@ else:
     st.info("Nenhum cálculo realizado ainda. Os resultados aparecerão aqui.")
 
 st.markdown("---")
-st.markdown("Desenvolvido por Jossana Almeida, com o auxílio de um modelo de linguagem.")
+st.markdown("Desenvolvido por você, com o auxílio de um modelo de linguagem.")
