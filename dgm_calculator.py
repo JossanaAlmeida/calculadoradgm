@@ -713,4 +713,5 @@ else:
     st.info("Nenhum cálculo realizado ainda. Os resultados aparecerão aqui.")
 
 st.markdown("---")
-st.markdown("Desenvolvido por você, com o auxílio de um modelo de linguagem.")
+st.markdown("Desenvolvido por Jossana Almeida, com o auxílio de um modelo de linguagem.")
+
